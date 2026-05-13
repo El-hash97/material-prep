@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(officecli get *)",
+      "PowerShell(officecli query *)",
+      "PowerShell(Get-Item *)",
+      "PowerShell(npm *)",
+      "Bash(npm run *)",
+      "Bash(python \"C:\\\\Users\\\\El\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\\\\ui-ux-pro-max\\\\2.5.0\\\\cli\\\\assets\\\\scripts\\\\search.py\" \"enterprise saas dashboard data-dense\" --domain color -n 3)",
+      "Bash(python \"C:\\\\Users\\\\El\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\\\\ui-ux-pro-max\\\\2.5.0\\\\cli\\\\assets\\\\scripts\\\\search.py\" \"professional clean modern industrial\" --domain typography -n 2)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

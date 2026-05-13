@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MatPrep — Production Material Preparation System</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1A3C6E;
+  --primary-light: #2A5298;
+  --primary-pale: #DBEAFE;
+  --secondary: #475569;
+  --border: #CBD5E1;
+  --bg: #F1F5F9;
+  --surface: #FFFFFF;
+  --text: #1E293B;
+  --text-muted: #64748B;
+  --red-shift: #DC2626;
+  --white-shift: #7C3AED;
+  --success: #166534;
+  --success-bg: #DCFCE7;
+  --warning: #92400E;
+  --warning-bg: #FEF3C7;
+  --danger: #991B1B;
+  --danger-bg: #FEE2E2;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+
+/* Sidebar */
+#sidebar {
+  width: 220px; min-height: 100vh; background: var(--primary);
+  display: flex; flex-direction: column; position: fixed; left: 0; top: 0; z-index: 100;
+}
+#sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+#sidebar-header h1 { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+#sidebar-header p { color: #93C5FD; font-size: 10px; margin-top: 2px; line-height: 1.4; }
+#sidebar nav { flex: 1; padding: 12px 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; color: #93C5FD; font-size: 13px;
+  cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: #60A5FA; }
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+#sidebar-footer { padding: 12px 16px; color: #64748B; font-size: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+
+/* Main content */
+#main { margin-left: 220px; flex: 1; min-height: 100vh; }
+.page { display: none; padding: 24px; max-width: 1100px; }
+.page.active { display: block; }
+.page-header { margin-bottom: 20px; }
+.page-header h2 { font-size: 22px; color: var(--primary); font-weight: 700; }
+.page-header p { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+/* Cards */
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.card-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+.card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge-open { background: var(--warning-bg); color: var(--warning); }
+.badge-closed { background: var(--success-bg); color: var(--success); }
+.badge-red { background: #FEE2E2; color: var(--red-shift); }
+.badge-white { background: #EDE9FE; color: var(--white-shift); }
+.badge-over { background: var(--danger-bg); color: var(--danger); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--primary); }
+thead th { color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--bg); }
+tbody td { padding: 10px 12px; vertical-align: middle; }
+tfoot tr { background: var(--bg); font-weight: 600; }
+tfoot td { padding: 10px 12px; border-top: 2px solid var(--border); }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Forms */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--secondary); margin-bottom: 6px; }
+.form-control {
+  width: 100%; padding: 8px 12px; border: 1.5px solid var(--border);
+  border-radius: 6px; font-size: 13px; color: var(--text);
+  outline: none; transition: border-color 0.15s;
+}
+.form-control:focus { border-color: var(--primary-light); }
+.form-control:disabled { background: var(--bg); color: var(--text-muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-primary:disabled { background: #94A3B8; cursor: not-allowed; }
+.btn-success { background: #16A34A; color: #fff; }
+.btn-success:hover { background: #15803D; }
+.btn-warning { background: #D97706; color: #fff; }
+.btn-warning:hover { background: #B45309; }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--secondary); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
+.actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+
+/* Alerts */
+.alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+.alert-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid #FDE68A; }
+.alert-success { background: var(--success-bg); color: var(--success); border: 1px solid #86EFAC; }
+.alert-info { background: var(--primary-pale); color: var(--primary); border: 1px solid #BFDBFE; }
+.alert-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #FCA5A5; }
+
+/* Product input cards */
+.product-input-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.product-card { background: var(--surface); border-radius: var(--radius); border: 2px solid var(--border); padding: 16px; text-align: center; transition: border-color 0.15s; }
+.product-card.active { border-color: var(--primary); }
+.product-card-title { font-weight: 700; font-size: 18px; margin-bottom: 12px; }
+.product-card.c-2tr .product-card-title { color: #1A3C6E; }
+.product-card.c-1tr .product-card-title { color: #166534; }
+.product-card.c-kai .product-card-title { color: #16A34A; }
+.product-card.c-crank .product-card-title { color: #92400E; }
+.lot-display { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+.lot-display strong { color: var(--primary); font-size: 16px; }
+
+/* Bon table */
+td.editable-cell input {
+  width: 100px; padding: 4px 8px; border: 1.5px solid var(--border);
+  border-radius: 4px; font-size: 13px; text-align: right;
+}
+td.editable-cell input:focus { border-color: var(--primary-light); outline: none; }
+.bon-zero td { color: var(--text-muted); }
+
+/* Chart containers */
+.chart-container { position: relative; height: 220px; }
+
+/* Filter bar */
+.filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+.filter-bar select { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 13px; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 15px; margin-bottom: 6px; }
+
+/* Activity */
+.activity-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.activity-item:last-child { border-bottom: none; }
+.activity-date { font-size: 11px; color: var(--text-muted); }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: #fff; border-radius: 10px; padding: 28px; width: 90%; max-width: 480px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.modal h3 { font-size: 17px; color: var(--primary); margin-bottom: 12px; }
+.modal p { font-size: 13px; color: var(--secondary); margin-bottom: 20px; }
+
+/* Settings */
+.settings-section { margin-bottom: 28px; }
+.settings-section h3 { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.settings-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.settings-item label { display: block; font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+
+/* Notification dot */
+.notif-dot { display: inline-block; width: 8px; height: 8px; background: #EF4444; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+
+/* Print */
+@media print {
+  body { background: #fff; }
+  #sidebar, .no-print { display: none !important; }
+  #main { margin-left: 0 !important; }
+  .page { padding: 0 !important; max-width: none !important; }
+  .page.active { display: none !important; }
+  #print-bon-area { display: block !important; }
+}
+#print-bon-area { display: none; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>MatPrep</h1>
+    <p>Production Material Preparation<br>PT TMMIN — Divisi Casting</p>
+  </div>
+  <nav>
+    <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard')">
+      <span class="icon">📊</span> Dashboard
+    </div>
+    <div class="nav-item" data-page="planning" onclick="navigate('planning')">
+      <span class="icon">📋</span> Buat Bon
+      <span id="nav-notif" class="notif-dot" style="display:none"></span>
+    </div>
+    <div class="nav-item" data-page="riwayat" onclick="navigate('riwayat')">
+      <span class="icon">📂</span> Riwayat
+    </div>
+    <div class="nav-item" data-page="settings" onclick="navigate('settings')">
+      <span class="icon">⚙️</span> Pengaturan
+    </div>
+  </nav>
+  <div id="sidebar-footer">MatPrep v1.0 · localStorage</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <h2>Dashboard</h2>
+      <p id="dash-subtitle">Ringkasan produksi Divisi Casting</p>
+    </div>
+    <div class="grid-4" id="dash-cards"></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Pemakaian Material Bulan Ini (kg)</div>
+        <div class="chart-container"><canvas id="chart-bar"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribusi Produksi per Produk (lot besar)</div>
+        <div class="chart-container"><canvas id="chart-donut"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Aktivitas 5 Shift Terakhir</div>
+      <div id="dash-activity"></div>
+    </div>
+  </div>
+
+  <!-- BUAT BON -->
+  <div id="page-planning" class="page">
+    <div class="page-header">
+      <h2>Buat Bon Material</h2>
+      <p>Masukkan planning lot per produk — sistem akan menghitung kebutuhan bon secara otomatis</p>
+    </div>
+    <div id="planning-notif"></div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tanggal Shift</label>
+          <input type="date" id="p-tanggal" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Shift</label>
+          <select id="p-shift" class="form-control">
+            <option value="Red">🔴 Red (Day)</option>
+            <option value="White">⚪ White (Night)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:14px">Input Lot Kecil per Produk</div>
+      <div class="product-input-grid">
+        <div class="product-card c-2tr" id="pc-2TR">
+          <div class="product-card-title">2TR</div>
+          <div class="form-group">
+            <label class="form-label">Lot Kecil</label>
+            <input type="number" id="lk-2TR" class="form-control" min="0" value="0" oninput="onLotKecilChange()">
+          </div>
+          <div class="lot-display">Lot Besar: <strong id="lb-2TR">0</strong></div>
+        </div>
+        <div class="product-card c-1tr" id="pc-1TR">
+          <div class="product-card-title">1TR</div>
+          <div class="form-group">
+            <label class="form-label">Lot Kecil</label>
+            <input type="number" id="lk-1TR" class="form-control" min="0" value="0" oninput="onLotKecilChange()">
+          </div>
+          <div class="lot-display">Lot Besar: <strong id="lb-1TR">0</strong></div>
+        </div>
+        <div class="product-card c-kai" id="pc-KAI">
+          <div class="product-card-title">KAI</div>
+          <div class="form-group">
+            <label class="form-label">Lot Kecil</label>
+            <input type="number" id="lk-KAI" class="form-control" min="0" value="0" oninput="onLotKecilChange()">
+          </div>
+          <div class="lot-display">Lot Besar: <strong id="lb-KAI">0</strong></div>
+        </div>
+        <div class="product-card c-crank" id="pc-CRANK">
+          <div class="product-card-title">CRANK</div>
+          <div class="form-group">
+            <label class="form-label">Lot Kecil</label>
+            <input type="number" id="lk-CRANK" class="form-control" min="0" value="0" oninput="onLotKecilChange()">
+          </div>
+          <div class="lot-display">Lot Besar: <strong id="lb-CRANK">0</strong></div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Rasio konversi: <strong id="rasio-display">3</strong> lot kecil = 1 lot besar
+      </div>
+      <button class="btn btn-primary" onclick="hitungBon()">🔄 Hitung Bon</button>
+    </div>
+
+    <div id="bon-result-area" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:12px">Tabel Bon Material</div>
+        <div id="bon-warning-area"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Produk</th>
+                <th style="text-align:right">Total Tepat (kg)</th>
+                <th style="text-align:right">Sisa Stok (kg)</th>
+                <th style="text-align:right">Bon Bersih (kg)</th>
+                <th style="text-align:right">Bon Final (kg)</th>
+                <th style="text-align:right">Override</th>
+                <th style="text-align:right">Karung</th>
+              </tr>
+            </thead>
+            <tbody id="bon-table-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2"><strong>TOTAL</strong></td>
+                <td class="num" id="tbl-total-tepat">—</td>
+                <td class="num" id="tbl-total-sisa">—</td>
+                <td class="num" id="tbl-total-bersih">—</td>
+                <td class="num" id="tbl-total-final">—</td>
+                <td></td><td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="simpanBon()">💾 Simpan Bon</button>
+        <button class="btn btn-outline" onclick="resetPlanning()">🔄 Reset</button>
+      </div>
+    </div>
+
+    <div id="bon-saved-area" style="display:none">
+      <div class="alert alert-success">
+        ✅ Bon berhasil disimpan dengan status <strong>OPEN</strong>. Cetak bon untuk diserahkan ke gudang, atau tutup shift setelah produksi selesai.
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="cetakBonCurrent()">🖨️ Cetak Bon</button>
+        <button class="btn btn-warning" onclick="goTutupShiftCurrent()">📦 Tutup Shift</button>
+        <button class="btn btn-outline" onclick="resetToNewBon()">➕ Bon Baru</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TUTUP SHIFT -->
+  <div id="page-tutup-shift" class="page">
+    <div class="page-header">
+      <h2>Tutup Shift</h2>
+      <p id="tutup-subtitle">Input pemakaian aktual untuk menutup shift dan menyimpan sisa stok</p>
+    </div>
+    <div id="tutup-notif"></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Produk</th>
+              <th style="text-align:right">Bon Final (kg)</th>
+              <th style="text-align:right">Pemakaian Aktual (kg)</th>
+              <th style="text-align:right">Sisa Akhir (kg)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tutup-table-body"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2"><strong>TOTAL</strong></td>
+              <td class="num" id="tutup-total-final">—</td>
+              <td class="num" id="tutup-total-aktual">—</td>
+              <td class="num" id="tutup-total-sisa">—</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-success" id="btn-konfirmasi-tutup" onclick="konfirmasiTutupShift()">✅ Konfirmasi Tutup Shift</button>
+      <button class="btn btn-outline" onclick="navigate('riwayat')">← Kembali</button>
+    </div>
+  </div>
+
+  <!-- RIWAYAT -->
+  <div id="page-riwayat" class="page">
+    <div class="page-header">
+      <h2>Riwayat Bon</h2>
+      <p>Daftar semua bon yang telah dibuat</p>
+    </div>
+    <div class="filter-bar">
+      <select id="filter-bulan" onchange="renderRiwayat()">
+        <option value="">Semua Bulan</option>
+      </select>
+      <select id="filter-shift-rw" onchange="renderRiwayat()">
+        <option value="">Semua Shift</option>
+        <option value="Red">Red</option>
+        <option value="White">White</option>
+      </select>
+      <select id="filter-status" onchange="renderRiwayat()">
+        <option value="">Semua Status</option>
+        <option value="Open">Open</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </div>
+    <div id="riwayat-list"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="page-header">
+      <h2>Pengaturan</h2>
+      <p>Konfigurasi rasio konversi, kebutuhan material per lot besar, dan ukuran karung</p>
+    </div>
+    <div class="card">
+      <div class="settings-section">
+        <h3>Rasio Konversi Lot</h3>
+        <div style="max-width:220px">
+          <label class="form-label">Lot Kecil ÷ Rasio = Lot Besar</label>
+          <input type="number" id="s-ratio" class="form-control" min="1" step="1">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Default: 3 (9 lot kecil → 3 lot besar)</div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Kebutuhan Material per Lot Besar (kg/lot besar)</h3>
+        <div id="s-materials-form"></div>
+      </div>
+      <div class="settings-section">
+        <h3>Ukuran Karung per Material (kg/karung)</h3>
+        <div id="s-karung-form"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Simpan Pengaturan</button>
+        <button class="btn btn-outline" onclick="resetSettings()">↺ Reset ke Default</button>
+      </div>
+      <div id="settings-notif" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+</div><!-- end #main -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <h3 id="modal-title">Konfirmasi</h3>
+    <p id="modal-body">Apakah Anda yakin?</p>
+    <div class="actions">
+      <button class="btn btn-success" id="modal-ok-btn">Ya, Lanjutkan</button>
+      <button class="btn btn-outline" onclick="closeModal()">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT AREA -->
+<div id="print-bon-area"></div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const PRODUCTS = ['2TR', '1TR', 'KAI', 'CRANK'];
+
+const DEFAULT_SETTINGS = {
+  rasioKonversi: 3,
+  materials: {
+    '2TR':   { 'LMC': 100, 'Inocarb': 15, 'Antimon (Sb)': 5, 'Fe Sulfur': 10 },
+    '1TR':   { 'LMC': 80,  'Inocarb': 12, 'Antimon (Sb)': 4, 'Fe Sulfur': 8  },
+    'KAI':   { 'Mg Denodule': 8, 'Superseed': 3, 'Sn': 2, 'Cu': 4 },
+    'CRANK': { 'Mg Lamet': 6,   'Ultraseed CE Inoculant': 3, 'Sn': 2, 'Cu': 4 }
+  },
+  ukuranKarung: {
+    'LMC': 1000, 'Inocarb': 25, 'Antimon (Sb)': 25, 'Fe Sulfur': 25,
+    'Mg Denodule': 25, 'Superseed': 20, 'Sn': 50, 'Cu': 20,
+    'Mg Lamet': 25, 'Ultraseed CE Inoculant': 20
+  }
+};
+
+// ─── DB ──────────────────────────────────────────────────────────────────────
+const db = {
+  getSettings() {
+    try { const r = localStorage.getItem('matprep_settings'); return r ? JSON.parse(r) : deepCopy(DEFAULT_SETTINGS); }
+    catch { return deepCopy(DEFAULT_SETTINGS); }
+  },
+  saveSettings(s) { localStorage.setItem('matprep_settings', JSON.stringify(s)); },
+  getShifts() {
+    try { const r = localStorage.getItem('matprep_shifts'); return r ? JSON.parse(r) : []; }
+    catch { return []; }
+  },
+  saveShifts(arr) { localStorage.setItem('matprep_shifts', JSON.stringify(arr)); },
+  addShift(s) { const arr = this.getShifts(); arr.unshift(s); this.saveShifts(arr); },
+  updateShift(id, upd) {
+    const arr = this.getShifts();
+    const i = arr.findIndex(s => s.id === id);
+    if (i >= 0) { Object.assign(arr[i], upd); this.saveShifts(arr); }
+  },
+  getShiftById(id) { return this.getShifts().find(s => s.id === id) || null; },
+  deleteShift(id) { this.saveShifts(this.getShifts().filter(s => s.id !== id)); },
+  getLastClosed() { return this.getShifts().find(s => s.status === 'Closed') || null; },
+  hasOpenShift() { return this.getShifts().some(s => s.status === 'Open'); }
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function fmtNum(n) { if (n === null || n === undefined || isNaN(n)) return '—'; return Number(n).toLocaleString('id-ID'); }
+function formatDate(s) {
+  if (!s) return '—';
+  try { return new Date(s + 'T00:00:00').toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'}); }
+  catch { return s; }
+}
+
+function getAllMaterials(settings) {
+  const seen = new Set(), list = [];
+  for (const p of PRODUCTS) {
+    for (const m of Object.keys(settings.materials[p] || {})) {
+      if (!seen.has(m)) { seen.add(m); list.push(m); }
+    }
+  }
+  return list;
+}
+
+function calcLotBesar(lotKecil, ratio) {
+  if (!lotKecil || lotKecil <= 0) return 0;
+  return Math.ceil(lotKecil / ratio);
+}
+
+function buildBonLines(lotKecilMap, settings, prevClosed) {
+  const ratio = settings.rasioKonversi;
+  const lotBesarMap = {};
+  for (const p of PRODUCTS) lotBesarMap[p] = calcLotBesar(lotKecilMap[p] || 0, ratio);
+
+  // Sisa stok dari shift sebelumnya
+  const prevSisa = {};
+  if (prevClosed) {
+    for (const l of prevClosed.bonLines) {
+      if (l.sisaAkhir) prevSisa[l.material] = (prevSisa[l.material] || 0) + l.sisaAkhir;
+    }
+  }
+
+  const lines = [];
+  for (const mat of getAllMaterials(settings)) {
+    const rincian = [];
+    let totalTepat = 0;
+    for (const p of PRODUCTS) {
+      const perLot = settings.materials[p]?.[mat];
+      if (perLot !== undefined) {
+        const lb = lotBesarMap[p];
+        const tt = lb * perLot;
+        rincian.push({ produk: p, lotBesar: lb, perLot, totalTepat: tt });
+        totalTepat += tt;
+      }
+    }
+    if (!rincian.length) continue;
+
+    const sisaStok = prevSisa[mat] || 0;
+    const uk = settings.ukuranKarung[mat] || 25;
+    const bonBersih = Math.max(0, totalTepat - sisaStok);
+    const bonFinal = bonBersih > 0 ? Math.ceil(bonBersih / uk) * uk : 0;
+
+    lines.push({ material: mat, produkRincian: rincian, totalTepat, sisaStok,
+                 bonBersih, bonFinal, bonFinalOverride: null, ukuranKarung: uk,
+                 pemakaianAktual: null, sisaAkhir: null });
+  }
+  return { bonLines: lines, lotBesarMap };
+}
+
+function effBonFinal(line) {
+  return line.bonFinalOverride !== null ? line.bonFinalOverride : line.bonFinal;
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let state = {
+  page: 'dashboard',
+  currentBonId: null,
+  currentBonLines: [],
+  currentLotBesarMap: {},
+  lotKecilMap: { '2TR': 0, '1TR': 0, 'KAI': 0, 'CRANK': 0 },
+  bonSaved: false
+};
+let chartBar = null, chartDonut = null;
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+function navigate(page) {
+  state.page = page;
+  document.querySelectorAll('.page').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+  const pg = document.getElementById('page-' + page);
+  if (pg) pg.classList.add('active');
+  const nav = document.querySelector('.nav-item[data-page="' + page + '"]');
+  if (nav) nav.classList.add('active');
+
+  if (page === 'dashboard')    renderDashboard();
+  if (page === 'planning')     renderPlanning();
+  if (page === 'tutup-shift')  renderTutupShift();
+  if (page === 'riwayat')      renderRiwayat();
+  if (page === 'settings')     renderSettings();
+  updateNavNotif();
+}
+
+function updateNavNotif() {
+  const dot = document.getElementById('nav-notif');
+  if (dot) dot.style.display = db.hasOpenShift() ? 'inline-block' : 'none';
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const shifts = db.getShifts();
+  const now = new Date();
+  const m = now.toISOString().slice(0, 7);
+  const monthShifts = shifts.filter(s => s.tanggal?.startsWith(m));
+  const closed = monthShifts.filter(s => s.status === 'Closed');
+
+  const totalLB = monthShifts.reduce((a, s) => {
+    for (const p of PRODUCTS) a += s.lotBesarMap?.[p] || 0;
+    return a;
+  }, 0);
+
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="card"><div class="card-title">Bon Bulan Ini</div><div class="card-value">${monthShifts.length}</div><div class="card-sub">${closed.length} selesai · ${monthShifts.length - closed.length} open</div></div>
+    <div class="card"><div class="card-title">Total Lot Besar</div><div class="card-value">${totalLB}</div><div class="card-sub">${now.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</div></div>
+    <div class="card"><div class="card-title">Shift Red (Day)</div><div class="card-value" style="color:var(--red-shift)">${monthShifts.filter(s=>s.shift==='Red').length}</div><div class="card-sub">Shift pagi bulan ini</div></div>
+    <div class="card"><div class="card-title">Shift White (Night)</div><div class="card-value" style="color:var(--white-shift)">${monthShifts.filter(s=>s.shift==='White').length}</div><div class="card-sub">Shift malam bulan ini</div></div>
+  `;
+  document.getElementById('dash-subtitle').textContent =
+    'Dashboard — ' + now.toLocaleDateString('id-ID', {day:'2-digit',month:'long',year:'numeric'});
+
+  // Bar chart: pemakaian aktual per material bulan ini
+  const settings = db.getSettings();
+  const allMats = getAllMaterials(settings);
+  const matPem = {};
+  for (const mat of allMats) matPem[mat] = 0;
+  for (const s of closed) {
+    for (const l of s.bonLines) {
+      if (l.pemakaianAktual !== null) matPem[l.material] = (matPem[l.material] || 0) + l.pemakaianAktual;
+    }
+  }
+  const barCtx = document.getElementById('chart-bar').getContext('2d');
+  if (chartBar) chartBar.destroy();
+  chartBar = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: allMats,
+      datasets: [{ label: 'Pemakaian (kg)', data: allMats.map(m => matPem[m] || 0),
+        backgroundColor: '#1A3C6E', borderRadius: 4 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  // Donut: distribusi per produk
+  const prodLot = {};
+  for (const p of PRODUCTS) prodLot[p] = 0;
+  for (const s of monthShifts) for (const p of PRODUCTS) prodLot[p] += s.lotBesarMap?.[p] || 0;
+  const donutCtx = document.getElementById('chart-donut').getContext('2d');
+  if (chartDonut) chartDonut.destroy();
+  chartDonut = new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: PRODUCTS,
+      datasets: [{ data: PRODUCTS.map(p => prodLot[p]),
+        backgroundColor: ['#1A3C6E', '#166534', '#16A34A', '#D97706'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } } }
+  });
+
+  // Activity
+  const act = document.getElementById('dash-activity');
+  const recent = shifts.slice(0, 5);
+  if (!recent.length) {
+    act.innerHTML = '<div class="empty-state" style="padding:20px"><div class="icon">📋</div><h3>Belum ada aktivitas</h3></div>';
+    return;
+  }
+  act.innerHTML = recent.map(s => {
+    const lots = PRODUCTS.filter(p => (s.lotBesarMap?.[p]||0) > 0).map(p => p + ':' + s.lotBesarMap[p]).join(' · ');
+    return `<div class="activity-item">
+      <div>
+        <div><strong>${formatDate(s.tanggal)}</strong> &nbsp;
+          <span class="badge badge-${s.shift==='Red'?'red':'white'}">Shift ${s.shift}</span>
+        </div>
+        <div class="activity-date">${lots}</div>
+      </div>
+      <span class="badge badge-${s.status==='Open'?'open':'closed'}">${s.status}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── PLANNING ────────────────────────────────────────────────────────────────
+function renderPlanning() {
+  const dateEl = document.getElementById('p-tanggal');
+  if (!dateEl.value) dateEl.value = todayStr();
+
+  const settings = db.getSettings();
+  const rasioEl = document.getElementById('rasio-display');
+  if (rasioEl) rasioEl.textContent = settings.rasioKonversi;
+
+  // Warning: open shift exists
+  const notif = document.getElementById('planning-notif');
+  const openShift = db.getShifts().find(s => s.status === 'Open');
+  if (openShift) {
+    notif.innerHTML = `<div class="alert alert-warning">
+      ⚠️ Bon <strong>${formatDate(openShift.tanggal)} — Shift ${openShift.shift}</strong> masih berstatus OPEN dan belum ditutup.
+      Bon baru akan menggunakan sisa stok = 0.
+      &nbsp;<a href="#" onclick="openTutupShiftById('${openShift.id}');return false;"
+        style="color:var(--warning);font-weight:700">→ Tutup Sekarang</a>
+    </div>`;
+  } else {
+    notif.innerHTML = '';
+  }
+
+  if (state.bonSaved) {
+    document.getElementById('bon-result-area').style.display = 'none';
+    document.getElementById('bon-saved-area').style.display = 'block';
+  }
+}
+
+function onLotKecilChange() {
+  const settings = db.getSettings();
+  for (const p of PRODUCTS) {
+    const lk = parseInt(document.getElementById('lk-' + p)?.value) || 0;
+    const lb = calcLotBesar(lk, settings.rasioKonversi);
+    const lbEl = document.getElementById('lb-' + p);
+    if (lbEl) lbEl.textContent = lb;
+    document.getElementById('pc-' + p)?.classList.toggle('active', lk > 0);
+  }
+}
+
+function hitungBon() {
+  const settings = db.getSettings();
+  const lkMap = {};
+  let anyPositive = false;
+  for (const p of PRODUCTS) {
+    const v = parseInt(document.getElementById('lk-' + p)?.value) || 0;
+    lkMap[p] = v;
+    if (v > 0) anyPositive = true;
+  }
+  if (!anyPositive) { alert('Minimal 1 produk harus memiliki lot kecil > 0.'); return; }
+  state.lotKecilMap = lkMap;
+
+  const prevClosed = db.getLastClosed();
+  const { bonLines, lotBesarMap } = buildBonLines(lkMap, settings, prevClosed);
+  state.currentBonLines = bonLines;
+  state.currentLotBesarMap = lotBesarMap;
+  state.bonSaved = false;
+
+  renderBonTable();
+  document.getElementById('bon-result-area').style.display = 'block';
+  document.getElementById('bon-saved-area').style.display = 'none';
+}
+
+function renderBonTable() {
+  const lines = state.currentBonLines;
+  let totTepat = 0, totSisa = 0, totBersih = 0, totFinal = 0;
+  const zeroMats = [];
+
+  const rows = lines.map((l, idx) => {
+    const eff = effBonFinal(l);
+    totTepat += l.totalTepat; totSisa += l.sisaStok; totBersih += l.bonBersih; totFinal += eff;
+    if (eff === 0 && l.totalTepat > 0) zeroMats.push(l.material);
+    const produkStr = l.produkRincian.map(r => r.produk + '(' + r.lotBesar + ')').join(', ');
+    const nKarung = eff > 0 ? eff / l.ukuranKarung : 0;
+    return `<tr class="${eff === 0 ? 'bon-zero' : ''}">
+      <td><strong>${l.material}</strong><br><small style="color:var(--text-muted)">${fmtNum(l.ukuranKarung)} kg/karung</small></td>
+      <td style="font-size:12px">${produkStr}</td>
+      <td class="num">${fmtNum(l.totalTepat)}</td>
+      <td class="num">${l.sisaStok > 0 ? '<span style="color:var(--success)">'+fmtNum(l.sisaStok)+'</span>' : '0'}</td>
+      <td class="num">${fmtNum(l.bonBersih)}</td>
+      <td class="num"><strong>${fmtNum(l.bonFinal)}</strong></td>
+      <td class="editable-cell">
+        <input type="number" min="0" step="${l.ukuranKarung}"
+          value="${l.bonFinalOverride !== null ? l.bonFinalOverride : ''}"
+          placeholder="${l.bonFinal}"
+          oninput="onOverride(${idx}, this.value)">
+      </td>
+      <td class="num">${eff > 0 ? fmtNum(nKarung) + ' krgn' : '<span style="color:var(--text-muted)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('bon-table-body').innerHTML = rows;
+  document.getElementById('tbl-total-tepat').textContent = fmtNum(totTepat);
+  document.getElementById('tbl-total-sisa').textContent = fmtNum(totSisa);
+  document.getElementById('tbl-total-bersih').textContent = fmtNum(totBersih);
+  document.getElementById('tbl-total-final').textContent = fmtNum(totFinal);
+
+  const wa = document.getElementById('bon-warning-area');
+  wa.innerHTML = zeroMats.length
+    ? `<div class="alert alert-info">ℹ️ Stok cukup — tidak perlu bon: <strong>${zeroMats.join(', ')}</strong></div>`
+    : '';
+}
+
+function onOverride(idx, val) {
+  const v = parseFloat(val);
+  state.currentBonLines[idx].bonFinalOverride = (isNaN(v) || val === '') ? null : v;
+}
+
+function simpanBon() {
+  const tanggal = document.getElementById('p-tanggal').value;
+  const shift = document.getElementById('p-shift').value;
+  if (!tanggal) { alert('Pilih tanggal shift.'); return; }
+  if (!state.currentBonLines.length) { alert('Hitung bon terlebih dahulu.'); return; }
+
+  const id = genId();
+  db.addShift({
+    id, tanggal, shift, status: 'Open',
+    lotKecilMap: deepCopy(state.lotKecilMap),
+    lotBesarMap: deepCopy(state.currentLotBesarMap),
+    bonLines: deepCopy(state.currentBonLines),
+    createdAt: new Date().toISOString(), closedAt: null
+  });
+  state.currentBonId = id;
+  state.bonSaved = true;
+  document.getElementById('bon-result-area').style.display = 'none';
+  document.getElementById('bon-saved-area').style.display = 'block';
+  updateNavNotif();
+}
+
+function resetPlanning() {
+  for (const p of PRODUCTS) {
+    const el = document.getElementById('lk-' + p);
+    if (el) el.value = 0;
+    const lb = document.getElementById('lb-' + p);
+    if (lb) lb.textContent = 0;
+    document.getElementById('pc-' + p)?.classList.remove('active');
+  }
+  document.getElementById('bon-result-area').style.display = 'none';
+  document.getElementById('bon-saved-area').style.display = 'none';
+  document.getElementById('bon-warning-area').innerHTML = '';
+  state.currentBonLines = []; state.bonSaved = false; state.currentBonId = null;
+}
+
+function resetToNewBon() {
+  resetPlanning();
+  document.getElementById('p-tanggal').value = todayStr();
+  renderPlanning();
+}
+
+function cetakBonCurrent() {
+  if (state.currentBonId) printBon(db.getShiftById(state.currentBonId));
+}
+
+function goTutupShiftCurrent() {
+  if (state.currentBonId) openTutupShiftById(state.currentBonId);
+}
+
+function openTutupShiftById(id) {
+  state.currentBonId = id;
+  navigate('tutup-shift');
+}
+
+// ─── TUTUP SHIFT ─────────────────────────────────────────────────────────────
+function renderTutupShift() {
+  const bon = state.currentBonId ? db.getShiftById(state.currentBonId) : null;
+  const notif = document.getElementById('tutup-notif');
+  const btn = document.getElementById('btn-konfirmasi-tutup');
+
+  if (!bon) {
+    document.getElementById('tutup-table-body').innerHTML =
+      '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">Pilih bon dari Riwayat untuk ditutup</td></tr>';
+    if (btn) btn.disabled = true;
+    return;
+  }
+  document.getElementById('tutup-subtitle').textContent =
+    formatDate(bon.tanggal) + ' — Shift ' + bon.shift;
+
+  if (bon.status === 'Closed') {
+    notif.innerHTML = '<div class="alert alert-success">✅ Shift ini sudah ditutup. Sisa stok telah disimpan.</div>';
+    if (btn) btn.disabled = true;
+  } else {
+    notif.innerHTML = '';
+    if (btn) btn.disabled = false;
+  }
+  renderTutupTable(bon);
+}
+
+function renderTutupTable(bon) {
+  const isClosed = bon.status === 'Closed';
+  let totFinal = 0, totAktual = 0, totSisa = 0;
+  let hasAktual = false;
+
+  const rows = bon.bonLines.map((l, idx) => {
+    const eff = effBonFinal(l);
+    totFinal += eff;
+    const aktual = l.pemakaianAktual;
+    const isOver = aktual !== null && aktual > eff;
+    const sisa = aktual !== null ? (isOver ? 0 : eff - aktual) : null;
+    if (aktual !== null) { totAktual += aktual; hasAktual = true; }
+    if (sisa !== null) totSisa += sisa;
+    const produkStr = l.produkRincian.map(r => r.produk).join('+');
+
+    return `<tr style="${isOver ? 'background:var(--danger-bg)' : ''}">
+      <td><strong>${l.material}</strong></td>
+      <td style="font-size:12px">${produkStr}</td>
+      <td class="num"><strong>${fmtNum(eff)}</strong></td>
+      <td class="editable-cell">
+        ${isClosed
+          ? `<span class="num">${fmtNum(aktual)}</span>`
+          : `<input type="number" min="0" step="0.1" class="form-control"
+              style="width:120px;text-align:right"
+              value="${aktual !== null ? aktual : ''}" placeholder="0"
+              oninput="onPemakaian(${idx}, this.value)">`
+        }
+      </td>
+      <td class="num">
+        ${sisa !== null
+          ? `<strong style="color:${isOver?'var(--danger)':'var(--success)'}">${isOver ? '0' : fmtNum(sisa)}</strong>`
+          : '<span style="color:var(--text-muted)">—</span>'
+        }
+      </td>
+      <td>
+        ${isOver
+          ? '<span class="badge badge-over">⚠️ Over-Use</span>'
+          : sisa !== null
+            ? '<span style="color:var(--success);font-size:12px">✅ OK</span>'
+            : '<span style="color:var(--text-muted);font-size:12px">—</span>'
+        }
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tutup-table-body').innerHTML = rows;
+  document.getElementById('tutup-total-final').textContent = fmtNum(totFinal);
+  document.getElementById('tutup-total-aktual').textContent = hasAktual ? fmtNum(totAktual) : '—';
+  document.getElementById('tutup-total-sisa').textContent = hasAktual ? fmtNum(totSisa) : '—';
+}
+
+function onPemakaian(idx, val) {
+  const bon = db.getShiftById(state.currentBonId);
+  if (!bon) return;
+  const v = parseFloat(val);
+  bon.bonLines[idx].pemakaianAktual = isNaN(v) || val === '' ? null : v;
+  db.updateShift(state.currentBonId, { bonLines: bon.bonLines });
+  renderTutupTable(db.getShiftById(state.currentBonId));
+}
+
+function konfirmasiTutupShift() {
+  const bon = db.getShiftById(state.currentBonId);
+  if (!bon || bon.status === 'Closed') return;
+
+  const missing = bon.bonLines.filter(l => effBonFinal(l) > 0 && l.pemakaianAktual === null);
+  if (missing.length) {
+    if (!confirm(missing.map(m=>m.material).join(', ') + '\n' + missing.length + ' material belum diisi. Lanjutkan dengan nilai 0?')) return;
+    for (const l of bon.bonLines) if (l.pemakaianAktual === null) l.pemakaianAktual = 0;
+    db.updateShift(state.currentBonId, { bonLines: bon.bonLines });
+  }
+
+  showModal(
+    'Konfirmasi Tutup Shift',
+    'Tutup shift ' + bon.shift + ' ' + formatDate(bon.tanggal) + '? Tindakan ini tidak dapat dibatalkan. Sisa stok akan diteruskan ke shift berikutnya.',
+    () => {
+      const fresh = db.getShiftById(state.currentBonId);
+      const updLines = fresh.bonLines.map(l => {
+        const eff = effBonFinal(l);
+        const a = l.pemakaianAktual || 0;
+        return { ...l, pemakaianAktual: a, sisaAkhir: a > eff ? 0 : eff - a };
+      });
+      db.updateShift(state.currentBonId, { status: 'Closed', bonLines: updLines, closedAt: new Date().toISOString() });
+      updateNavNotif();
+      document.getElementById('tutup-notif').innerHTML =
+        '<div class="alert alert-success">✅ Shift berhasil ditutup. Sisa stok tersimpan untuk shift berikutnya.</div>';
+      document.getElementById('btn-konfirmasi-tutup').disabled = true;
+      renderTutupTable(db.getShiftById(state.currentBonId));
+    }
+  );
+}
+
+// ─── RIWAYAT ─────────────────────────────────────────────────────────────────
+function renderRiwayat() {
+  const shifts = db.getShifts();
+  const months = [...new Set(shifts.map(s => s.tanggal?.slice(0,7)).filter(Boolean))].sort().reverse();
+  const fb = document.getElementById('filter-bulan');
+  const cur = fb.value;
+  fb.innerHTML = '<option value="">Semua Bulan</option>' +
+    months.map(m => `<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+
+  const fShift = document.getElementById('filter-shift-rw').value;
+  const fStatus = document.getElementById('filter-status').value;
+  const fMonth = fb.value;
+
+  let list = shifts;
+  if (fMonth) list = list.filter(s => s.tanggal?.startsWith(fMonth));
+  if (fShift) list = list.filter(s => s.shift === fShift);
+  if (fStatus) list = list.filter(s => s.status === fStatus);
+
+  const el = document.getElementById('riwayat-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📂</div><h3>Tidak ada data</h3><p>Belum ada bon yang sesuai filter</p></div>';
+    return;
+  }
+
+  el.innerHTML = list.map(s => {
+    const totFinal = s.bonLines.reduce((a, l) => a + effBonFinal(l), 0);
+    const lotStr = PRODUCTS.filter(p => (s.lotBesarMap?.[p]||0) > 0).map(p => p + ': ' + s.lotBesarMap[p]).join(' · ');
+    const hasOver = s.bonLines.some(l => l.pemakaianAktual !== null && l.pemakaianAktual > effBonFinal(l));
+
+    const detail = s.bonLines.map(l => {
+      const eff = effBonFinal(l);
+      const isOver = l.pemakaianAktual !== null && l.pemakaianAktual > eff;
+      return `<tr style="${isOver ? 'background:var(--danger-bg)' : ''}">
+        <td>${l.material}</td>
+        <td class="num">${fmtNum(l.totalTepat)}</td>
+        <td class="num">${fmtNum(l.sisaStok)}</td>
+        <td class="num"><strong>${fmtNum(eff)}</strong></td>
+        ${s.status === 'Closed' ? `<td class="num" style="${isOver?'color:var(--danger)':''}">${fmtNum(l.pemakaianAktual)}</td><td class="num">${fmtNum(l.sisaAkhir)}</td>` : ''}
+      </tr>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+            <strong style="font-size:15px">${formatDate(s.tanggal)}</strong>
+            <span class="badge badge-${s.shift==='Red'?'red':'white'}">Shift ${s.shift}</span>
+            <span class="badge badge-${s.status==='Open'?'open':'closed'}">${s.status}</span>
+            ${hasOver ? '<span class="badge badge-over">Over-Use</span>' : ''}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted)">${lotStr} · Total Bon: <strong>${fmtNum(totFinal)} kg</strong></div>
+          ${s.closedAt ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Ditutup: ${new Date(s.closedAt).toLocaleString('id-ID')}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="toggleDetail('det-${s.id}')">📋 Detail</button>
+          ${s.status === 'Open' ? `<button class="btn btn-warning btn-sm" onclick="openTutupShiftById('${s.id}')">📦 Tutup Shift</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="printBon(db.getShiftById('${s.id}'))">🖨️ Cetak</button>
+          ${s.status !== 'Closed' ? `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="hapusBon('${s.id}')">🗑️</button>` : ''}
+        </div>
+      </div>
+      <div id="det-${s.id}" style="display:none;margin-top:14px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--bg)">
+            <th style="padding:6px 8px;text-align:left">Material</th>
+            <th style="padding:6px 8px;text-align:right">Total Tepat</th>
+            <th style="padding:6px 8px;text-align:right">Sisa Stok</th>
+            <th style="padding:6px 8px;text-align:right">Bon Final</th>
+            ${s.status === 'Closed' ? '<th style="padding:6px 8px;text-align:right">Pemakaian</th><th style="padding:6px 8px;text-align:right">Sisa Akhir</th>' : ''}
+          </tr></thead>
+          <tbody>${detail}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleDetail(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function hapusBon(id) {
+  const bon = db.getShiftById(id);
+  if (!bon || bon.status === 'Closed') { alert('Bon yang sudah Closed tidak bisa dihapus.'); return; }
+  showModal('Hapus Bon',
+    'Hapus bon ' + formatDate(bon.tanggal) + ' — Shift ' + bon.shift + '? Tindakan ini tidak bisa dibatalkan.',
+    () => { db.deleteShift(id); renderRiwayat(); updateNavNotif(); }
+  );
+}
+
+// ─── PRINT BON ───────────────────────────────────────────────────────────────
+function printBon(bon) {
+  if (!bon) return;
+  const totFinal = bon.bonLines.reduce((a, l) => a + effBonFinal(l), 0);
+  document.getElementById('print-bon-area').innerHTML = `
+    <div style="font-family:Arial;padding:30px;max-width:740px;margin:0 auto">
+      <div style="text-align:center;padding-bottom:14px;margin-bottom:16px;border-bottom:3px solid #1A3C6E">
+        <div style="font-size:11px;color:#475569;margin-bottom:4px">PT Toyota Motor Manufacturing Indonesia · Divisi Casting</div>
+        <h2 style="font-size:20px;color:#1A3C6E;letter-spacing:1px">BON PERMINTAAN MATERIAL</h2>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+        <tr>
+          <td width="130"><strong>Tanggal</strong></td><td>: ${formatDate(bon.tanggal)}</td>
+          <td width="130"><strong>Shift</strong></td><td>: ${bon.shift} (${bon.shift==='Red'?'Day':'Night'})</td>
+        </tr>
+        <tr>
+          <td><strong>No. Bon</strong></td><td>: ${bon.id.toUpperCase()}</td>
+          <td><strong>Status</strong></td><td>: ${bon.status}</td>
+        </tr>
+        <tr>
+          <td><strong>Dibuat</strong></td><td colspan="3">: ${new Date(bon.createdAt).toLocaleString('id-ID')}</td>
+        </tr>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px;border:1px solid #CBD5E1">
+        <thead>
+          <tr style="background:#1A3C6E;color:white">
+            ${PRODUCTS.map(p => `<th colspan="2" style="padding:6px;border:1px solid #94A3B8;text-align:center">${p}</th>`).join('')}
+          </tr>
+          <tr style="background:#F1F5F9">
+            ${PRODUCTS.map(() => '<th style="padding:4px 6px;border:1px solid #CBD5E1;text-align:center">Lot Kecil</th><th style="padding:4px 6px;border:1px solid #CBD5E1;text-align:center">Lot Besar</th>').join('')}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>${PRODUCTS.map(p =>
+            `<td style="text-align:center;padding:6px;border:1px solid #CBD5E1">${bon.lotKecilMap?.[p]||0}</td>` +
+            `<td style="text-align:center;padding:6px;border:1px solid #CBD5E1;font-weight:bold">${bon.lotBesarMap?.[p]||0}</td>`
+          ).join('')}</tr>
+        </tbody>
+      </table>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:20px">
+        <thead>
+          <tr style="background:#1A3C6E;color:white">
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:left">Material</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:center">Produk</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:right">Total Tepat (kg)</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:right">Sisa Stok (kg)</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:right">Bon Bersih (kg)</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:right;font-weight:bold">Bon Final (kg)</th>
+            <th style="padding:8px;border:1px solid #94A3B8;text-align:right">Jml Karung</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bon.bonLines.map(l => {
+            const eff = effBonFinal(l);
+            return `<tr>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1"><strong>${l.material}</strong></td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:center">${l.produkRincian.map(r=>r.produk).join('+')}</td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">${fmtNum(l.totalTepat)}</td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">${fmtNum(l.sisaStok)}</td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">${fmtNum(l.bonBersih)}</td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right;font-weight:bold">${fmtNum(eff)}</td>
+              <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">${eff > 0 ? fmtNum(eff/l.ukuranKarung) : '—'}</td>
+            </tr>`;
+          }).join('')}
+          <tr style="background:#F1F5F9;font-weight:bold">
+            <td colspan="5" style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">TOTAL</td>
+            <td style="padding:7px 8px;border:1px solid #CBD5E1;text-align:right">${fmtNum(totFinal)} kg</td>
+            <td style="padding:7px 8px;border:1px solid #CBD5E1"></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:36px;text-align:center;font-size:12px">
+        <div style="border-top:1px solid #CBD5E1;padding-top:8px">Dibuat Oleh,<br><br><br><br>___________________________<br>Operator</div>
+        <div style="border-top:1px solid #CBD5E1;padding-top:8px">Diketahui Oleh,<br><br><br><br>___________________________<br>Supervisor</div>
+        <div style="border-top:1px solid #CBD5E1;padding-top:8px">Diterima Oleh,<br><br><br><br>___________________________<br>Gudang</div>
+      </div>
+    </div>`;
+  window.print();
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function renderSettings() {
+  const s = db.getSettings();
+  document.getElementById('s-ratio').value = s.rasioKonversi;
+
+  document.getElementById('s-materials-form').innerHTML = PRODUCTS.map(p => {
+    const mats = s.materials[p] || {};
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">${p}</div>
+      <div class="settings-grid">
+        ${Object.entries(mats).map(([mat, val]) => `
+          <div class="settings-item">
+            <label>${mat} (kg/lot besar)</label>
+            <input type="number" class="form-control" min="0" step="0.1"
+              data-produk="${p}" data-mat="${mat}" value="${val}" style="text-align:right">
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  const allMats = getAllMaterials(s);
+  document.getElementById('s-karung-form').innerHTML = `<div class="settings-grid">
+    ${allMats.map(mat => `
+      <div class="settings-item">
+        <label>${mat} (kg/karung)</label>
+        <input type="number" class="form-control" min="1" step="1"
+          data-karung="${mat}" value="${s.ukuranKarung[mat] || 25}" style="text-align:right">
+      </div>`).join('')}
+  </div>`;
+}
+
+function saveSettings() {
+  const s = db.getSettings();
+  s.rasioKonversi = parseInt(document.getElementById('s-ratio').value) || 3;
+  document.querySelectorAll('[data-produk]').forEach(el => {
+    const p = el.dataset.produk, m = el.dataset.mat;
+    if (!s.materials[p]) s.materials[p] = {};
+    s.materials[p][m] = parseFloat(el.value) || 0;
+  });
+  document.querySelectorAll('[data-karung]').forEach(el => {
+    s.ukuranKarung[el.dataset.karung] = parseFloat(el.value) || 25;
+  });
+  db.saveSettings(s);
+  const n = document.getElementById('settings-notif');
+  n.innerHTML = '<div class="alert alert-success">✅ Pengaturan berhasil disimpan.</div>';
+  setTimeout(() => n.innerHTML = '', 3000);
+}
+
+function resetSettings() {
+  showModal('Reset Pengaturan', 'Reset semua pengaturan ke nilai default? Nilai yang sudah diubah akan hilang.', () => {
+    db.saveSettings(deepCopy(DEFAULT_SETTINGS));
+    renderSettings();
+    const n = document.getElementById('settings-notif');
+    n.innerHTML = '<div class="alert alert-info">ℹ️ Pengaturan direset ke nilai default.</div>';
+    setTimeout(() => n.innerHTML = '', 3000);
+  });
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+let _modalCb = null;
+function showModal(title, body, onOk) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal-confirm').classList.add('open');
+  _modalCb = onOk;
+  document.getElementById('modal-ok-btn').onclick = () => { closeModal(); if (_modalCb) _modalCb(); };
+}
+function closeModal() { document.getElementById('modal-confirm').classList.remove('open'); _modalCb = null; }
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  updateNavNotif();
+  renderDashboard();
+});
+</script>
+</body>
+</html>
