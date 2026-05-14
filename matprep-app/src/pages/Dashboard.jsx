@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Chart, BarElement, CategoryScale, LinearScale, ArcElement,
   Tooltip, Legend, BarController, DoughnutController,
+  LineController, LineElement, PointElement, LogarithmicScale
 } from 'chart.js';
 import { db } from '../store/db';
 import { PRODUCTS } from '../constants/defaults';
 import { getAllMaterials, effBonFinal, formatDate } from '../lib/calc';
 
-Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend, BarController, DoughnutController);
+Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend, BarController, DoughnutController, LineController, LineElement, PointElement, LogarithmicScale);
 
 const DONUT_COLORS = ['#1E40AF', '#EF4444', '#EAB308', '#16A34A'];
 const GRID_COLOR = 'rgba(63,63,70,0.8)';
@@ -27,9 +28,11 @@ export default function Dashboard() {
   const barRef    = useRef(null);
   const donutRef  = useRef(null);
   const bonRef    = useRef(null);
+  const paretoRef = useRef(null);
   const barInst   = useRef(null);
   const donutInst = useRef(null);
   const bonInst   = useRef(null);
+  const paretoInst = useRef(null);
 
   const [period, setPeriod]     = useState(7);
   const [bonShift, setBonShift] = useState('Red');
@@ -89,7 +92,7 @@ export default function Dashboard() {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR } },
+          y: { type: 'logarithmic', grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR } },
           x: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 10 } } },
         },
       },
@@ -113,7 +116,68 @@ export default function Dashboard() {
       },
     });
 
-    return () => { barInst.current?.destroy(); donutInst.current?.destroy(); };
+    const sortedMats = allMats
+      .map(m => ({ name: m, value: matPem[m] ?? 0 }))
+      .filter(m => m.value > 0)
+      .sort((a, b) => b.value - a.value);
+
+    const totalPem = sortedMats.reduce((sum, m) => sum + m.value, 0);
+    let cumulative = 0;
+    const paretoLine = sortedMats.map(m => {
+      cumulative += m.value;
+      return totalPem > 0 ? (cumulative / totalPem) * 100 : 0;
+    });
+
+    paretoInst.current?.destroy();
+    paretoInst.current = new Chart(paretoRef.current, {
+      type: 'bar',
+      data: {
+        labels: sortedMats.length ? sortedMats.map(m => m.name) : ['Belum ada data'],
+        datasets: sortedMats.length ? [
+          {
+            type: 'line',
+            label: 'Kumulatif (%)',
+            data: paretoLine,
+            borderColor: '#ef4444',
+            backgroundColor: '#ef4444',
+            yAxisID: 'y1',
+            tension: 0.1,
+            pointRadius: 3,
+          },
+          {
+            type: 'bar',
+            label: 'Pemakaian (kg)',
+            data: sortedMats.map(m => m.value),
+            backgroundColor: '#f59e0b',
+            borderRadius: 5,
+            yAxisID: 'y',
+          }
+        ] : []
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom', labels: { color: TICK_COLOR, font: { size: 11 } } } },
+        scales: {
+          y: { 
+            type: 'logarithmic', 
+            position: 'left', 
+            grid: { color: GRID_COLOR }, 
+            ticks: { color: TICK_COLOR } 
+          },
+          y1: { 
+            type: 'linear', 
+            position: 'right', 
+            max: 100, 
+            min: 0, 
+            grid: { display: false }, 
+            ticks: { color: TICK_COLOR, callback: (v) => v + '%' } 
+          },
+          x: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 10 } } },
+        },
+      },
+    });
+
+    return () => { barInst.current?.destroy(); donutInst.current?.destroy(); paretoInst.current?.destroy(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
@@ -202,39 +266,44 @@ export default function Dashboard() {
           <div className="relative h-[200px] md:h-[220px]"><canvas ref={barRef} /></div>
         </div>
         <div className="card">
-          <div className="card-title">Distribusi Produksi per Produk</div>
-          <div className="relative h-[200px] md:h-[220px]"><canvas ref={donutRef} /></div>
+          <div className="card-title">Pareto Dominasi Material</div>
+          <div className="relative h-[200px] md:h-[220px]"><canvas ref={paretoRef} /></div>
         </div>
       </div>
 
-      {/* Total Pengebonan — today, per material, shift selectable */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div className="card-title mb-0">Total Pengebonan Hari Ini (kg)</div>
-          <div className="flex gap-1.5">
-            {['Red', 'White'].map(s => (
-              <button
-                key={s}
-                onClick={() => setBonShift(s)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
-                  bonShift === s
-                    ? s === 'Red' ? 'bg-red-600 text-white' : 'bg-violet-600 text-white'
-                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="card">
+          <div className="card-title">Distribusi Produksi per Produk</div>
+          <div className="relative h-[200px] md:h-[220px]"><canvas ref={donutRef} /></div>
         </div>
-        <div className="relative h-[180px] md:h-[200px]">
-          {todayBons.length === 0 ? (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-sm">
-              Tidak ada bon hari ini untuk Shift {bonShift}
+        <div className="card">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="card-title mb-0">Total Pengebonan Hari Ini (kg)</div>
+            <div className="flex gap-1.5">
+              {['Red', 'White'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setBonShift(s)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                    bonShift === s
+                      ? s === 'Red' ? 'bg-red-600 text-white' : 'bg-violet-600 text-white'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
-          ) : (
-            <canvas ref={bonRef} />
-          )}
+          </div>
+          <div className="relative h-[180px] md:h-[200px]">
+            {todayBons.length === 0 ? (
+              <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-sm">
+                Tidak ada bon hari ini untuk Shift {bonShift}
+              </div>
+            ) : (
+              <canvas ref={bonRef} />
+            )}
+          </div>
         </div>
       </div>
 
