@@ -22,6 +22,14 @@ export default function Planning() {
 
   const settings = db.getSettings();
   const openShift = db.getShifts().find(s => s.status === 'Open');
+  const lastClosed = db.getLastClosed();
+  const prevSisaMap = {};
+  if (lastClosed) {
+    for (const l of lastClosed.bonLines) {
+      if (l.sisaAkhir) prevSisaMap[l.material] = (prevSisaMap[l.material] ?? 0) + l.sisaAkhir;
+    }
+  }
+  const hasPrevSisa = Object.values(prevSisaMap).some(v => v > 0);
 
   function hitung() {
     const hasAny = PRODUCTS.some(p => (planForm.lotKecilMap[p] ?? 0) > 0);
@@ -58,7 +66,7 @@ export default function Planning() {
     totTepat += l.totalTepat;
     const eff = effBonFinal(l);
     totFinal += eff;
-    totSisa += eff - l.totalTepat;
+    totSisa += l.sisaStok + eff - l.totalTepat;
   });
 
   return (
@@ -123,6 +131,42 @@ export default function Planning() {
         </div>
       </div>
 
+      {/* Sisa stok dari shift sebelumnya */}
+      {hasPrevSisa && (
+        <div className="card mb-4 border-l-4 border-l-emerald-500">
+          <div className="card-title mb-2 flex items-center gap-2">
+            <Package size={15} />
+            Sisa Stok Shift Sebelumnya
+            <span className="text-xs text-slate-400 dark:text-slate-500 font-normal ml-1">
+              {formatDate(lastClosed.tanggal)} — Shift {lastClosed.shift}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            Bon akan dikurangi otomatis agar material yang sudah cukup tidak perlu dibon ulang.
+          </p>
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-sm border-collapse min-w-[300px]">
+              <thead>
+                <tr className="table-header">
+                  <th className="px-3 py-2 text-left font-semibold">Material</th>
+                  <th className="px-3 py-2 text-right font-semibold">Sisa Stok (kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(prevSisaMap).filter(([, v]) => v > 0).map(([mat, sisa]) => (
+                  <tr key={mat} className="table-row">
+                    <td className="px-3 py-2 font-semibold">{mat}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">
+                      {fmtNum(sisa)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Lot inputs */}
       <div className="card mb-4">
         <div className="card-title mb-3">Input Lot Kecil per Produk</div>
@@ -169,14 +213,14 @@ export default function Planning() {
           {zeroMats.length > 0 && (
             <div className="alert alert-info mb-3">
               <Info size={16} className="shrink-0 mt-0.5" />
-              <span>Tidak perlu bon (total tepat = 0): <strong>{zeroMats.join(', ')}</strong></span>
+              <span>Stok sudah mencukupi, tidak perlu dibon: <strong>{zeroMats.join(', ')}</strong></span>
             </div>
           )}
           <div className="overflow-x-auto -mx-5 px-5">
-            <table className="w-full text-sm border-collapse min-w-[600px]">
+            <table className="w-full text-sm border-collapse min-w-[780px]">
               <thead>
                 <tr className="table-header">
-                  {['Material', 'Produk', 'Total Tepat (kg)', 'Bon Final (kg)', 'Sisa Stok (kg)', 'Override', 'Karung'].map((h, i) => (
+                  {['Material', 'Produk', 'Total Tepat (kg)', 'Sisa Sebelumnya (kg)', 'Bon Final (kg)', 'Sisa Setelah Bon (kg)', 'Override', 'Karung'].map((h, i) => (
                     <th key={h} className={`px-3 py-2.5 font-semibold ${i >= 2 ? 'text-right' : 'text-left'}`}>{h}</th>
                   ))}
                 </tr>
@@ -184,20 +228,29 @@ export default function Planning() {
               <tbody>
                 {calculatedBonLines.map((l, idx) => {
                   const eff = effBonFinal(l);
-                  const sisaStok = eff - l.totalTepat;
+                  const sisaSetelah = l.sisaStok + eff - l.totalTepat;
                   const produkStr = l.produkRincian.map(r => `${r.produk}(${r.lotBesar})`).join(', ');
                   return (
-                    <tr key={l.material} className={`table-row ${eff === 0 ? 'opacity-50' : ''}`}>
+                    <tr key={l.material} className={`table-row ${eff === 0 ? 'opacity-60' : ''}`}>
                       <td className="px-3 py-2.5">
                         <div className="font-semibold">{l.material}</div>
                         <div className="text-xs text-slate-400 dark:text-slate-500">{fmtNum(l.ukuranKarung)} kg/karung</div>
                       </td>
                       <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{produkStr}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(l.totalTepat)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-bold">{fmtNum(eff)}</td>
                       <td className="px-3 py-2.5 text-right tabular-nums">
-                        {sisaStok > 0
-                          ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(sisaStok)}</span>
+                        {l.sisaStok > 0
+                          ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(l.sisaStok)}</span>
+                          : <span className="text-slate-400">—</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-bold">
+                        {eff === 0
+                          ? <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">Cukup</span>
+                          : fmtNum(eff)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {sisaSetelah > 0
+                          ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(sisaSetelah)}</span>
                           : '0'}
                       </td>
                       <td className="px-3 py-2.5 text-right">
@@ -219,6 +272,7 @@ export default function Planning() {
                 <tr className="table-foot">
                   <td colSpan={2} className="px-3 py-2.5 text-slate-600 dark:text-slate-300">TOTAL</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(totTepat)}</td>
+                  <td />
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(totFinal)}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(totSisa)}</td>
                   <td colSpan={2} />

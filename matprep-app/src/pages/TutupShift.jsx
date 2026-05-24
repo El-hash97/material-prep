@@ -47,7 +47,8 @@ export default function TutupShift() {
       const updLines = fresh.bonLines.map(l => {
         const eff = effBonFinal(l);
         const a = l.pemakaianAktual ?? 0;
-        return { ...l, pemakaianAktual: a, sisaAkhir: a > eff ? 0 : eff - a };
+        const totalTersedia = (l.sisaStok ?? 0) + eff;
+        return { ...l, pemakaianAktual: a, sisaAkhir: Math.max(0, totalTersedia - a) };
       });
       db.updateShift(currentBonId, {
         status: 'Closed', bonLines: updLines, closedAt: new Date().toISOString(),
@@ -80,10 +81,11 @@ export default function TutupShift() {
   }
 
   const isClosed = bon.status === 'Closed';
-  let totFinal = 0, totAktual = 0, totSisa = 0, hasAktual = false;
+  let totFinal = 0, totTersedia = 0, totAktual = 0, totSisa = 0, hasAktual = false;
   bon.bonLines.forEach(l => {
     const eff = effBonFinal(l);
     totFinal += eff;
+    totTersedia += (l.sisaStok ?? 0) + eff;
     if (l.pemakaianAktual !== null) { totAktual += l.pemakaianAktual; hasAktual = true; }
     if (l.sisaAkhir !== null) totSisa += l.sisaAkhir;
   });
@@ -115,12 +117,14 @@ export default function TutupShift() {
 
       <div className="card mb-4">
         <div className="overflow-x-auto -mx-5 px-5">
-          <table className="w-full text-sm border-collapse min-w-[560px]">
+          <table className="w-full text-sm border-collapse min-w-[860px]">
             <thead>
               <tr className="table-header">
                 <th className="px-3 py-2.5 text-left font-semibold">Material</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Produk</th>
+                <th className="px-3 py-2.5 text-right font-semibold">Sisa Sebelumnya (kg)</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Bon Final (kg)</th>
+                <th className="px-3 py-2.5 text-right font-semibold">Total Tersedia (kg)</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Pemakaian Aktual (kg)</th>
                 <th className="px-3 py-2.5 text-right font-semibold">Sisa Akhir (kg)</th>
                 <th className="px-3 py-2.5 text-left font-semibold">Status</th>
@@ -130,8 +134,9 @@ export default function TutupShift() {
               {bon.bonLines.map((l, idx) => {
                 const eff = effBonFinal(l);
                 const aktVal = l.pemakaianAktual;
-                const isOver = aktVal !== null && aktVal > eff;
-                const sisa = aktVal !== null ? (isOver ? 0 : eff - aktVal) : null;
+                const totalTersedia = (l.sisaStok ?? 0) + eff;
+                const isOver = aktVal !== null && aktVal > totalTersedia;
+                const sisa = aktVal !== null ? Math.max(0, totalTersedia - aktVal) : null;
                 const produkStr = l.produkRincian.map(r => r.produk).join('+');
                 return (
                   <tr
@@ -140,7 +145,13 @@ export default function TutupShift() {
                   >
                     <td className="px-3 py-2.5 font-semibold">{l.material}</td>
                     <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">{produkStr}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {(l.sisaStok ?? 0) > 0
+                        ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(l.sisaStok)}</span>
+                        : <span className="text-slate-400">—</span>}
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-bold">{fmtNum(eff)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-bold text-[#1A3C6E] dark:text-blue-400">{fmtNum(totalTersedia)}</td>
                     <td className="px-3 py-2.5 text-right">
                       {isClosed ? (
                         <span className="tabular-nums">{fmtNum(aktVal)}</span>
@@ -182,7 +193,9 @@ export default function TutupShift() {
             <tfoot>
               <tr className="table-foot">
                 <td colSpan={2} className="px-3 py-2.5 text-slate-600 dark:text-slate-300">TOTAL</td>
+                <td />
                 <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(totFinal)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{fmtNum(totTersedia)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{hasAktual ? fmtNum(totAktual) : '—'}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums">{hasAktual ? fmtNum(totSisa) : '—'}</td>
                 <td />

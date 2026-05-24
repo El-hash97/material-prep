@@ -51,7 +51,8 @@ export function buildBonLines(lotKecilMap, settings, prevClosed) {
 
     const sisaStok = prevSisa[mat] ?? 0;
     const uk = settings.ukuranKarung[mat] ?? 25;
-    const bonFinal = totalTepat > 0 ? Math.ceil(totalTepat / uk) * uk : 0;
+    const netKebutuhan = Math.max(0, totalTepat - sisaStok);
+    const bonFinal = netKebutuhan > 0 ? Math.ceil(netKebutuhan / uk) * uk : 0;
 
     lines.push({
       material: mat, produkRincian: rincian, totalTepat, sisaStok,

@@ -65,7 +65,7 @@ export default function Riwayat() {
             const totFinal = s.bonLines.reduce((a, l) => a + effBonFinal(l), 0);
             const lotStr = PRODUCTS.filter(p => (s.lotBesarMap?.[p] ?? 0) > 0)
               .map(p => `${p}: ${s.lotBesarMap[p]}`).join(' · ');
-            const hasOver = s.bonLines.some(l => l.pemakaianAktual !== null && l.pemakaianAktual > effBonFinal(l));
+            const hasOver = s.bonLines.some(l => l.pemakaianAktual !== null && l.pemakaianAktual > (l.sisaStok ?? 0) + effBonFinal(l));
             const isOpen = expanded[s.id];
 
             return (
@@ -130,16 +130,17 @@ export default function Riwayat() {
                       <tbody>
                         {s.bonLines.map(l => {
                           const eff = effBonFinal(l);
-                          const sisaAkhir = eff - l.totalTepat;
                           return (
                             <tr key={l.material} className="border-t border-slate-100 dark:border-slate-700">
                               <td className="px-3 py-2 font-medium">{l.material}</td>
                               <td className="px-3 py-2 text-right tabular-nums">{fmtNum(l.totalTepat)}</td>
-                              <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">{fmtNum(l.sisaStok)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">
+                                {(l.sisaStok ?? 0) > 0 ? fmtNum(l.sisaStok) : <span className="text-slate-400">—</span>}
+                              </td>
                               <td className="px-3 py-2 text-right tabular-nums font-bold">{fmtNum(eff)}</td>
                               {s.status === 'Closed' && <>
-                                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(l.totalTepat)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(sisaAkhir)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(l.pemakaianAktual)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">{fmtNum(l.sisaAkhir)}</td>
                               </>}
                             </tr>
                           );
