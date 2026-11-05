@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, RotateCcw, CheckCircle, Info } from 'lucide-react';
+import { Save, RotateCcw, CheckCircle, Info, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { db } from '../store/db';
 import { DEFAULT_SETTINGS, PRODUCTS } from '../constants/defaults';
 import { getAllMaterials } from '../lib/calc';
@@ -9,6 +9,8 @@ export default function Settings() {
   const { showModal } = useStore();
   const [settings, setSettings] = useState(() => db.getSettings());
   const [notif, setNotif] = useState('');
+  const [draft, setDraft] = useState({ nama: '', produk: '2TR', ukuran: 25 });
+  const [formErr, setFormErr] = useState('');
 
   const allMats = getAllMaterials(settings);
 
@@ -23,9 +25,55 @@ export default function Settings() {
       const def = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       db.saveSettings(def);
       setSettings(def);
+      setDraft({ nama: '', produk: '2TR', ukuran: 25 });
+      setFormErr('');
       setNotif('info');
       setTimeout(() => setNotif(''), 3000);
     });
+  }
+
+  function addMaterial() {
+    const nama = draft.nama.trim();
+    if (!nama) {
+      setFormErr('Nama material tidak boleh kosong.');
+      return;
+    }
+    const existing = allMats.find(m => m.toLowerCase() === nama.toLowerCase());
+    const finalName = existing ?? nama;
+    if (settings.materials[draft.produk]?.[finalName] !== undefined) {
+      setFormErr(`Material "${finalName}" sudah ada untuk produk ${draft.produk}.`);
+      return;
+    }
+    setSettings(s => ({
+      ...s,
+      materials: {
+        ...s.materials,
+        [draft.produk]: { ...(s.materials[draft.produk] ?? {}), [finalName]: 0 },
+      },
+      ukuranKarung: {
+        ...s.ukuranKarung,
+        [finalName]: s.ukuranKarung[finalName] ?? (parseFloat(draft.ukuran) || 25),
+      },
+    }));
+    setDraft(d => ({ ...d, nama: '' }));
+    setFormErr('');
+  }
+
+  function removeMaterial(produk, material) {
+    showModal(
+      'Hapus Jenis Material',
+      `Hapus material "${material}" dari produk ${produk}? Riwayat shift lama tidak berubah.`,
+      () => {
+        setSettings(s => {
+          const mats = { ...(s.materials[produk] ?? {}) };
+          delete mats[material];
+          const masihDipakai = PRODUCTS.some(p => p !== produk && s.materials[p]?.[material] !== undefined);
+          const ukuranKarung = { ...s.ukuranKarung };
+          if (!masihDipakai) delete ukuranKarung[material];
+          return { ...s, materials: { ...s.materials, [produk]: mats }, ukuranKarung };
+        });
+      },
+    );
   }
 
   const produkColors = {
@@ -72,7 +120,14 @@ export default function Settings() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {Object.entries(mats).map(([mat, val]) => (
                     <div key={mat}>
-                      <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block truncate">{mat}</label>
+                        <button type="button" onClick={() => removeMaterial(p, mat)}
+                          className="text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition-colors shrink-0"
+                          title={`Hapus ${mat} dari ${p}`}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                       <input type="number" min="0" step="0.1" className="form-control text-right"
                         value={val}
                         onChange={e => setSettings(s => ({
@@ -85,6 +140,47 @@ export default function Settings() {
               </div>
             );
           })}
+        </div>
+
+        {/* Tambah jenis material */}
+        <div className="mb-7">
+          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
+            Tambah Jenis Material
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_120px_auto] gap-3 items-end">
+            <div>
+              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Nama material</label>
+              <input type="text" className="form-control" placeholder="misal: Ferro Silicon"
+                value={draft.nama}
+                onChange={e => { setDraft(d => ({ ...d, nama: e.target.value })); setFormErr(''); }}
+                onKeyDown={e => { if (e.key === 'Enter') addMaterial(); }} />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Produk</label>
+              <select className="form-control" value={draft.produk}
+                onChange={e => { setDraft(d => ({ ...d, produk: e.target.value })); setFormErr(''); }}>
+                {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Karung (kg)</label>
+              <input type="number" min="1" step="1" className="form-control text-right"
+                value={draft.ukuran}
+                onChange={e => setDraft(d => ({ ...d, ukuran: e.target.value }))} />
+            </div>
+            <button type="button" className="btn btn-outline" onClick={addMaterial}>
+              <Plus size={14} />Tambah
+            </button>
+          </div>
+          {formErr && (
+            <div className="alert alert-danger mt-3">
+              <AlertTriangle size={16} className="shrink-0" />
+              <span>{formErr}</span>
+            </div>
+          )}
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+            Material baru ditambahkan dengan kebutuhan 0 kg/lot besar. Isi nilainya lalu klik Simpan Pengaturan.
+          </p>
         </div>
 
         {/* Ukuran karung */}
