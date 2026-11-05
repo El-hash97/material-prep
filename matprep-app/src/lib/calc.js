@@ -1,4 +1,4 @@
-import { PRODUCTS } from '../constants/defaults';
+import { PRODUCTS, DEFAULT_SETTINGS } from '../constants/defaults';
 
 export function getAllMaterials(settings) {
   const seen = new Set();
@@ -61,6 +61,27 @@ export function buildBonLines(lotKecilMap, settings, prevClosed) {
     });
   }
   return { bonLines: lines, lotBesarMap };
+}
+
+// Pemakaian aktual vs batas gentani (pcs produksi × kg/pcs) dari bon Closed.
+// Bon dengan pemakaianAktual kosong untuk suatu material tidak dihitung untuk material itu.
+export function gentaniUsage(closedShifts, settings) {
+  const pcs = { ...DEFAULT_SETTINGS.pcsPerLotKecil, ...settings.pcsPerLotKecil };
+  const ambang = settings.ambangWaspada ?? 90;
+  return getAllMaterials(settings).map(material => {
+    let pemakaian = 0, batas = 0;
+    for (const s of closedShifts) {
+      const line = s.bonLines.find(l => l.material === material);
+      if (!line || line.pemakaianAktual === null || line.pemakaianAktual === undefined) continue;
+      pemakaian += line.pemakaianAktual;
+      for (const p of PRODUCTS) {
+        batas += (s.lotKecilMap?.[p] ?? 0) * pcs[p] * (settings.gentani?.[p]?.[material] ?? 0);
+      }
+    }
+    const pct = batas > 0 ? (pemakaian / batas) * 100 : null;
+    const status = pct === null ? 'off' : pct > 100 ? 'over' : pct >= ambang ? 'warn' : 'ok';
+    return { material, pemakaian, batas, pct, status };
+  });
 }
 
 export function fmtNum(n) {
