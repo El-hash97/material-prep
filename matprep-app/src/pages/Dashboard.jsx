@@ -6,12 +6,13 @@ import {
 } from 'chart.js';
 import { db } from '../store/db';
 import { PRODUCTS } from '../constants/defaults';
-import { getAllMaterials, effBonFinal, formatDate } from '../lib/calc';
+import { getAllMaterials, effBonFinal, formatDate, gentaniUsage, fmtNum } from '../lib/calc';
 
 Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend, BarController, DoughnutController, LineController, LineElement, PointElement, LogarithmicScale);
 
 const DONUT_COLORS = ['#1E40AF', '#EF4444', '#EAB308', '#16A34A'];
-const GRID_COLOR = 'rgba(63,63,70,0.8)';
+const GENTANI_COLORS = { ok: '#16a34a', warn: '#eab308', over: '#ef4444' };
+const GRID_COLOR ='rgba(63,63,70,0.8)';
 const TICK_COLOR = '#71717a';
 
 function StatCard({ title, value, sub, valueClass = '' }) {
@@ -29,6 +30,8 @@ export default function Dashboard() {
   const donutRef  = useRef(null);
   const bonRef    = useRef(null);
   const paretoRef = useRef(null);
+  const gentaniRef = useRef(null);
+  const gentaniInst = useRef(null);
   const barInst   = useRef(null);
   const donutInst = useRef(null);
   const bonInst   = useRef(null);
@@ -51,6 +54,13 @@ export default function Dashboard() {
     return a;
   }, 0);
   const periodLabel = period === 1 ? 'Hari Ini' : `${period} Hari Terakhir`;
+
+  const settings = db.getSettings();
+  const gentaniRows = gentaniUsage(closedInPeriod, settings);
+  const gentaniActive = gentaniRows.filter(r => r.status !== 'off');
+  const gentaniOver = gentaniActive.filter(r => r.status === 'over');
+  const gentaniWarn = gentaniActive.filter(r => r.status === 'warn');
+  const gentaniOff = gentaniRows.filter(r => r.status === 'off').map(r => r.material);
 
   // Today's bons for the selected shift (for the Total Pengebonan chart)
   const todayBons = shifts.filter(s => s.tanggal === todayStr && s.shift === bonShift);
@@ -181,6 +191,66 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
+  // Pemakaian vs gentani — persen dari batas (pcs produksi × kg/pcs), responds to period
+  useEffect(() => {
+    if (!gentaniRef.current) return;
+    const ambang = settings.ambangWaspada ?? 90;
+    const active = gentaniRows.filter(r => r.status !== 'off');
+    const maxPct = Math.max(110, ...active.map(r => r.pct * 1.05));
+
+    // Garis vertikal di ambang waspada dan 100%
+    const guides = {
+      id: 'gentaniGuides',
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea, scales } = chart;
+        ctx.save();
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5;
+        [[ambang, '#eab308'], [100, '#ef4444']].forEach(([v, color]) => {
+          const x = scales.x.getPixelForValue(v);
+          ctx.strokeStyle = color;
+          ctx.beginPath(); ctx.moveTo(x, chartArea.top); ctx.lineTo(x, chartArea.bottom); ctx.stroke();
+        });
+        ctx.restore();
+      },
+    };
+
+    gentaniInst.current?.destroy();
+    gentaniInst.current = new Chart(gentaniRef.current, {
+      type: 'bar',
+      data: {
+        labels: active.map(r => r.material),
+        datasets: [{
+          data: active.map(r => r.pct),
+          backgroundColor: active.map(r => GENTANI_COLORS[r.status]),
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const r = active[ctx.dataIndex];
+                return `${r.pct.toFixed(0)}% — ${fmtNum(r.pemakaian)} dari batas ${fmtNum(r.batas)} kg`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { min: 0, max: maxPct, grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR, callback: v => v + '%' } },
+          y: { grid: { display: false }, ticks: { color: TICK_COLOR, font: { size: 10 } } },
+        },
+      },
+      plugins: [guides],
+    });
+    return () => { gentaniInst.current?.destroy(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
+
   // Total Pengebonan chart — responds to bonShift (today's bons per material)
   useEffect(() => {
     const settings = db.getSettings();
@@ -305,6 +375,32 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="card mb-4">
+        <div className="card-title mb-3">Pemakaian vs Gentani — {periodLabel}</div>
+        {gentaniOver.length > 0 && (
+          <div className="alert alert-danger mb-2">
+            <span>Melewati batas gentani: <strong>{gentaniOver.map(r => `${r.material} (${r.pct.toFixed(0)}%)`).join(', ')}</strong>. Segera periksa penyebabnya.</span>
+          </div>
+        )}
+        {gentaniWarn.length > 0 && (
+          <div className="alert alert-warning mb-2">
+            <span>Hampir mencapai batas gentani (≥ {settings.ambangWaspada ?? 90}%): <strong>{gentaniWarn.map(r => `${r.material} (${r.pct.toFixed(0)}%)`).join(', ')}</strong>. Siapkan penanggulangan.</span>
+          </div>
+        )}
+        {gentaniActive.length === 0 ? (
+          <div className="py-8 text-center text-sm text-zinc-600">
+            Belum ada data. Isi gentani di Pengaturan dan tutup shift dengan pemakaian aktual.
+          </div>
+        ) : (
+          <div className="relative" style={{ height: gentaniActive.length * 30 + 50 }}>
+            <canvas ref={gentaniRef} />
+          </div>
+        )}
+        {gentaniOff.length > 0 && (
+          <p className="text-xs text-zinc-500 mt-3">Gentani belum diisi / belum ada data: {gentaniOff.join(', ')}</p>
+        )}
       </div>
 
       <div className="card">
