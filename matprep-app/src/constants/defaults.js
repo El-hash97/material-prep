@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
     'KAI':   { 'Mg Denodule': 8, 'Superseed': 3, 'Sn': 2, 'Cu': 4 },
     'CRANK': { 'Mg Lamet': 6,   'Ultraseed CE Inoculant': 3, 'Sn': 2, 'Cu': 4 },
   },
+  stokMinimum: {},
   ukuranKarung: {
     'LMC': 1000, 'Inocarb': 25, 'Antimon (Sb)': 25, 'Fe Sulfur': 25,
     'Mg Denodule': 25, 'Superseed': 20, 'Sn': 50, 'Cu': 20,

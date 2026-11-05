@@ -107,6 +107,29 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Stok minimum */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
+            Batas Stok Minimum per Material (kg)
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+            Isi 0 untuk menonaktifkan peringatan. Dipakai pada visualisasi stok di halaman Buat Bon.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {allMats.map(mat => (
+              <div key={mat}>
+                <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
+                <input type="number" min="0" step="1" className="form-control text-right"
+                  value={settings.stokMinimum?.[mat] ?? 0}
+                  onChange={e => setSettings(s => ({
+                    ...s,
+                    stokMinimum: { ...s.stokMinimum, [mat]: parseFloat(e.target.value) || 0 },
+                  }))} />
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex gap-3 flex-wrap">
           <button className="btn btn-primary" onClick={save}><Save size={14} />Simpan Pengaturan</button>
           <button className="btn btn-outline" onClick={reset}><RotateCcw size={14} />Reset ke Default</button>
