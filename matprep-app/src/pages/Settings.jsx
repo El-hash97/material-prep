@@ -203,6 +203,76 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Gentani */}
+        <div className="mb-7">
+          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
+            Gentani (kg per pcs)
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+            Batas pemakaian = pcs produksi × gentani. Isi 0 untuk menonaktifkan pemantauan material tersebut di Dashboard.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {PRODUCTS.map(p => (
+              <div key={p}>
+                <label className={`text-[11px] font-semibold block mb-1 ${produkColors[p]}`}>{p} — pcs per lot kecil</label>
+                <input type="number" min="1" step="1" className="form-control text-right"
+                  value={settings.pcsPerLotKecil?.[p] ?? DEFAULT_SETTINGS.pcsPerLotKecil[p]}
+                  onChange={e => setSettings(s => ({
+                    ...s,
+                    pcsPerLotKecil: { ...s.pcsPerLotKecil, [p]: parseInt(e.target.value) || 1 },
+                  }))} />
+              </div>
+            ))}
+          </div>
+          {PRODUCTS.map(p => (
+            <div key={p} className="mb-5">
+              <div className={`text-xs font-bold mb-2 ${produkColors[p]}`}>{p}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Object.keys(settings.materials[p] ?? {}).map(mat => (
+                  <div key={mat}>
+                    <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
+                    <input type="number" min="0" step="0.01" className="form-control text-right"
+                      value={settings.gentani?.[p]?.[mat] ?? 0}
+                      onChange={e => setSettings(s => ({
+                        ...s,
+                        gentani: { ...s.gentani, [p]: { ...s.gentani?.[p], [mat]: parseFloat(e.target.value) || 0 } },
+                      }))} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="max-w-[220px]">
+            <label className="form-label">Ambang waspada (% dari batas)</label>
+            <input type="number" min="1" max="100" step="1" className="form-control text-right"
+              value={settings.ambangWaspada ?? 90}
+              onChange={e => setSettings(s => ({ ...s, ambangWaspada: parseFloat(e.target.value) || 90 }))} />
+          </div>
+        </div>
+
+        {/* Stok minimum */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
+            Batas Stok Minimum per Material (kg)
+          </h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+            Isi 0 untuk menonaktifkan peringatan. Dipakai pada visualisasi stok di halaman Buat Bon.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {allMats.map(mat => (
+              <div key={mat}>
+                <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
+                <input type="number" min="0" step="1" className="form-control text-right"
+                  value={settings.stokMinimum?.[mat] ?? 0}
+                  onChange={e => setSettings(s => ({
+                    ...s,
+                    stokMinimum: { ...s.stokMinimum, [mat]: parseFloat(e.target.value) || 0 },
+                  }))} />
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex gap-3 flex-wrap">
           <button className="btn btn-primary" onClick={save}><Save size={14} />Simpan Pengaturan</button>
           <button className="btn btn-outline" onClick={reset}><RotateCcw size={14} />Reset ke Default</button>

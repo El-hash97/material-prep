@@ -4,6 +4,7 @@ import { db } from '../store/db';
 import { PRODUCTS } from '../constants/defaults';
 import { buildBonLines, calcLotBesar, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
 import { printBon } from '../lib/print';
+import StockTubes from '../components/StockTubes';
 
 const PRODUCT_COLORS = {
   '2TR':   { border: 'border-[#1A3C6E]', title: 'text-[#1A3C6E] dark:text-blue-400' },
@@ -205,6 +206,16 @@ export default function Planning() {
           <RefreshCw size={14} />Hitung Bon
         </button>
       </div>
+
+      {hasBon && (
+        <div className="card mb-4">
+          <div className="card-title mb-1">Visualisasi Stok</div>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
+            Tabung penuh = sisa sebelumnya + bon. Isi tabung = sisa setelah bon. Garis merah putus-putus = batas stok minimum.
+          </p>
+          <StockTubes lines={calculatedBonLines} stokMinimum={settings.stokMinimum} />
+        </div>
+      )}
 
       {/* Bon table */}
       {hasBon && (
