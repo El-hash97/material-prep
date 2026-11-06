@@ -1,5 +1,12 @@
 export const PRODUCTS = ['2TR', '1TR', 'KAI', 'CRANK'];
 
+export const PRODUCT_TONES = {
+  '2TR':   { color: '#6E9FE8', soft: 'rgba(110, 159, 232, 0.16)', label: 'Steel Blue' },
+  '1TR':   { color: '#E2574C', soft: 'rgba(226, 87, 76, 0.16)',   label: 'Signal Red' },
+  'KAI':   { color: '#F0A32A', soft: 'rgba(240, 163, 42, 0.16)',  label: 'Amber' },
+  'CRANK': { color: '#4DBE8A', soft: 'rgba(77, 190, 138, 0.16)',  label: 'Green' },
+};
+
 export const DEFAULT_SETTINGS = {
   rasioKonversi: 3,
   materials: {

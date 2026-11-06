@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Save, RotateCcw, CheckCircle, Info, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Save, RotateCcw, CheckCircle, Info, Plus, Trash2, AlertTriangle, SlidersHorizontal, FlaskConical, Boxes } from 'lucide-react';
 import { db } from '../store/db';
-import { DEFAULT_SETTINGS, PRODUCTS } from '../constants/defaults';
+import { DEFAULT_SETTINGS, PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { getAllMaterials } from '../lib/calc';
 import useStore from '../store/useStore';
 
@@ -13,6 +13,11 @@ export default function Settings() {
   const [formErr, setFormErr] = useState('');
 
   const allMats = getAllMaterials(settings);
+  const materialAssignments = PRODUCTS.reduce((a, p) => a + Object.keys(settings.materials[p] ?? {}).length, 0);
+  const activeGentani = PRODUCTS.reduce(
+    (a, p) => a + Object.values(settings.gentani?.[p] ?? {}).filter(v => v > 0).length,
+    0,
+  );
 
   function save() {
     db.saveSettings(settings);
@@ -76,220 +81,322 @@ export default function Settings() {
     );
   }
 
-  const produkColors = {
-    '2TR': 'text-[#1A3C6E] dark:text-blue-400',
-    '1TR': 'text-green-700 dark:text-green-400',
-    'KAI': 'text-green-600 dark:text-green-400',
-    'CRANK': 'text-amber-700 dark:text-amber-400',
-  };
-
   return (
-    <div className="p-4 md:p-6 max-w-[900px]">
-      <div className="mb-5">
-        <h2 className="text-[22px] font-bold text-[#1A3C6E] dark:text-blue-400">Pengaturan</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-          Konfigurasi rasio konversi, kebutuhan material, dan ukuran karung
-        </p>
+    <div className="mx-auto max-w-[1480px] p-4 md:p-7">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Pengaturan</h1>
+          <p className="page-sub">Rasio konversi, kebutuhan material, ukuran karung, gentani, dan batas stok.</p>
+        </div>
+        <span className="chip text-steel-dim">
+          <SlidersHorizontal size={12} />{allMats.length} material · {materialAssignments} pemetaan
+        </span>
       </div>
 
-      <div className="card">
-        {/* Rasio */}
-        <div className="mb-7">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Rasio Konversi Lot
-          </h3>
-          <div className="max-w-[220px]">
-            <label className="form-label">Lot Kecil ÷ Rasio = Lot Besar</label>
-            <input type="number" min="1" step="1" className="form-control text-right"
-              value={settings.rasioKonversi}
-              onChange={e => setSettings(s => ({ ...s, rasioKonversi: parseInt(e.target.value) || 1 }))} />
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Default: 3 (misal: 9 lot kecil → 3 lot besar)</p>
+      <div className="bento">
+        <section className="tile md:col-span-5">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Rasio & Ambang</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Dasar perhitungan bon dan peringatan</div>
+            </div>
+            <FlaskConical size={15} className="text-steel-faint" />
           </div>
-        </div>
+          <div className="tile-body space-y-3">
+            <div>
+              <label className="form-label" htmlFor="rasio">Rasio konversi</label>
+              <input
+                id="rasio" type="number" min="1" step="1" className="form-control text-right"
+                value={settings.rasioKonversi}
+                onChange={e => setSettings(s => ({ ...s, rasioKonversi: parseInt(e.target.value) || 1 }))}
+              />
+              <p className="mt-1 text-[10px] text-steel-faint">Default 3 — misal 9 lot kecil menjadi 3 lot besar.</p>
+            </div>
+            <div>
+              <label className="form-label" htmlFor="ambang">Ambang waspada gentani (%)</label>
+              <input
+                id="ambang" type="number" min="1" max="100" step="1" className="form-control text-right"
+                value={settings.ambangWaspada ?? 90}
+                onChange={e => setSettings(s => ({ ...s, ambangWaspada: parseFloat(e.target.value) || 90 }))}
+              />
+              <p className="mt-1 text-[10px] text-steel-faint">Warna waspada muncul saat pemakaian mencapai persentase ini.</p>
+            </div>
+          </div>
+        </section>
 
-        {/* Material per lot besar */}
-        <div className="mb-7">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Kebutuhan Material per Lot Besar (kg/lot besar)
-          </h3>
-          {PRODUCTS.map(p => {
-            const mats = settings.materials[p] ?? {};
-            return (
-              <div key={p} className="mb-5">
-                <div className={`text-xs font-bold mb-2 ${produkColors[p]}`}>{p}</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {Object.entries(mats).map(([mat, val]) => (
-                    <div key={mat}>
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block truncate">{mat}</label>
-                        <button type="button" onClick={() => removeMaterial(p, mat)}
-                          className="text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 transition-colors shrink-0"
-                          title={`Hapus ${mat} dari ${p}`}>
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                      <input type="number" min="0" step="0.1" className="form-control text-right"
-                        value={val}
-                        onChange={e => setSettings(s => ({
-                          ...s,
-                          materials: { ...s.materials, [p]: { ...s.materials[p], [mat]: parseFloat(e.target.value) || 0 } },
-                        }))} />
-                    </div>
-                  ))}
+        <section className="tile md:col-span-7">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Ringkasan Konfigurasi</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Cakupan data yang sedang aktif</div>
+            </div>
+            <Boxes size={15} className="text-steel-faint" />
+          </div>
+          <div className="tile-body">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: 'Material', value: allMats.length },
+                { label: 'Pemetaan', value: materialAssignments },
+                { label: 'Gentani aktif', value: activeGentani },
+                { label: 'Ukuran karung', value: Object.keys(settings.ukuranKarung ?? {}).length },
+              ].map(item => (
+                <div key={item.label} className="well">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-steel-faint">{item.label}</div>
+                  <div className="readout mt-1 text-3xl">{item.value}</div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Tambah jenis material */}
-        <div className="mb-7">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Tambah Jenis Material
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_120px_auto] gap-3 items-end">
-            <div>
-              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Nama material</label>
-              <input type="text" className="form-control" placeholder="misal: Ferro Silicon"
-                value={draft.nama}
-                onChange={e => { setDraft(d => ({ ...d, nama: e.target.value })); setFormErr(''); }}
-                onKeyDown={e => { if (e.key === 'Enter') addMaterial(); }} />
+              ))}
             </div>
-            <div>
-              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Produk</label>
-              <select className="form-control" value={draft.produk}
-                onChange={e => { setDraft(d => ({ ...d, produk: e.target.value })); setFormErr(''); }}>
-                {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {PRODUCTS.map(p => (
+                <span key={p} className="chip" style={{ color: PRODUCT_TONES[p].color, borderColor: PRODUCT_TONES[p].soft }}>
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
+                  {p}
+                </span>
+              ))}
             </div>
-            <div>
-              <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">Karung (kg)</label>
-              <input type="number" min="1" step="1" className="form-control text-right"
-                value={draft.ukuran}
-                onChange={e => setDraft(d => ({ ...d, ukuran: e.target.value }))} />
-            </div>
-            <button type="button" className="btn btn-outline" onClick={addMaterial}>
-              <Plus size={14} />Tambah
-            </button>
           </div>
-          {formErr && (
-            <div className="alert alert-danger mt-3">
-              <AlertTriangle size={16} className="shrink-0" />
-              <span>{formErr}</span>
+        </section>
+
+        <section className="tile md:col-span-12">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Kebutuhan Material per Lot Besar</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">kg material untuk setiap lot besar per produk</div>
             </div>
-          )}
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-            Material baru ditambahkan dengan kebutuhan 0 kg/lot besar. Isi nilainya lalu klik Simpan Pengaturan.
-          </p>
-        </div>
-
-        {/* Ukuran karung */}
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Ukuran Karung per Material (kg/karung)
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {allMats.map(mat => (
-              <div key={mat}>
-                <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
-                <input type="number" min="1" step="1" className="form-control text-right"
-                  value={settings.ukuranKarung[mat] ?? 25}
-                  onChange={e => setSettings(s => ({
-                    ...s,
-                    ukuranKarung: { ...s.ukuranKarung, [mat]: parseFloat(e.target.value) || 25 },
-                  }))} />
-              </div>
-            ))}
           </div>
-        </div>
-
-        {/* Gentani */}
-        <div className="mb-7">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Gentani (kg per pcs)
-          </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
-            Batas pemakaian = pcs produksi × gentani. Isi 0 untuk menonaktifkan pemantauan material tersebut di Dashboard.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {PRODUCTS.map(p => (
-              <div key={p}>
-                <label className={`text-[11px] font-semibold block mb-1 ${produkColors[p]}`}>{p} — pcs per lot kecil</label>
-                <input type="number" min="1" step="1" className="form-control text-right"
-                  value={settings.pcsPerLotKecil?.[p] ?? DEFAULT_SETTINGS.pcsPerLotKecil[p]}
-                  onChange={e => setSettings(s => ({
-                    ...s,
-                    pcsPerLotKecil: { ...s.pcsPerLotKecil, [p]: parseInt(e.target.value) || 1 },
-                  }))} />
-              </div>
-            ))}
+          <div className="tile-body">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {PRODUCTS.map(p => {
+                const mats = settings.materials[p] ?? {};
+                const tone = PRODUCT_TONES[p];
+                return (
+                  <div key={p} className="min-w-0">
+                    <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tone.color }} />
+                        <span className="font-display text-lg font-semibold" style={{ color: tone.color }}>{p}</span>
+                      </div>
+                      <span className="text-[10px] text-steel-faint">{Object.keys(mats).length} material</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                      {Object.entries(mats).map(([mat, val]) => (
+                        <div key={mat}>
+                          <div className="mb-1 flex items-center justify-between gap-1">
+                            <label className="block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
+                            <button
+                              type="button"
+                              onClick={() => removeMaterial(p, mat)}
+                              className="shrink-0 text-steel-faint transition-colors hover:text-danger"
+                              title={`Hapus ${mat} dari ${p}`}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                          <input
+                            type="number" min="0" step="0.1" className="form-control py-1.5 text-right text-xs"
+                            value={val}
+                            aria-label={`${mat} per lot besar ${p}`}
+                            onChange={e => setSettings(s => ({
+                              ...s,
+                              materials: { ...s.materials, [p]: { ...s.materials[p], [mat]: parseFloat(e.target.value) || 0 } },
+                            }))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {PRODUCTS.map(p => (
-            <div key={p} className="mb-5">
-              <div className={`text-xs font-bold mb-2 ${produkColors[p]}`}>{p}</div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {Object.keys(settings.materials[p] ?? {}).map(mat => (
-                  <div key={mat}>
-                    <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
-                    <input type="number" min="0" step="0.01" className="form-control text-right"
-                      value={settings.gentani?.[p]?.[mat] ?? 0}
+        </section>
+
+        <section className="tile md:col-span-12">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Tambah Jenis Material</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Material baru mulai dari kebutuhan 0 kg/lot besar</div>
+            </div>
+          </div>
+          <div className="tile-body">
+            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_150px_120px_auto]">
+              <div>
+                <label className="form-label" htmlFor="draft-nama">Nama material</label>
+                <input
+                  id="draft-nama" type="text" className="form-control" placeholder="misal: Ferro Silicon"
+                  value={draft.nama}
+                  onChange={e => { setDraft(d => ({ ...d, nama: e.target.value })); setFormErr(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') addMaterial(); }}
+                />
+              </div>
+              <div>
+                <label className="form-label" htmlFor="draft-produk">Produk</label>
+                <select
+                  id="draft-produk" className="form-control cursor-pointer" value={draft.produk}
+                  onChange={e => { setDraft(d => ({ ...d, produk: e.target.value })); setFormErr(''); }}
+                >
+                  {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label" htmlFor="draft-ukuran">Karung (kg)</label>
+                <input
+                  id="draft-ukuran" type="number" min="1" step="1" className="form-control text-right"
+                  value={draft.ukuran}
+                  onChange={e => setDraft(d => ({ ...d, ukuran: e.target.value }))}
+                />
+              </div>
+              <button type="button" className="btn btn-outline" onClick={addMaterial}>
+                <Plus size={14} />Tambah
+              </button>
+            </div>
+            {formErr && (
+              <div className="alert alert-danger mt-3 !mb-0">
+                <AlertTriangle size={16} className="shrink-0" />
+                <span>{formErr}</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="tile md:col-span-6">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Ukuran Karung</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">kg per karung untuk pembulatan bon</div>
+            </div>
+          </div>
+          <div className="tile-body">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {allMats.map(mat => (
+                <div key={mat}>
+                  <label className="mb-1 block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
+                  <input
+                    type="number" min="1" step="1" className="form-control py-1.5 text-right text-xs"
+                    value={settings.ukuranKarung[mat] ?? 25}
+                    aria-label={`Ukuran karung ${mat}`}
+                    onChange={e => setSettings(s => ({
+                      ...s,
+                      ukuranKarung: { ...s.ukuranKarung, [mat]: parseFloat(e.target.value) || 25 },
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="tile md:col-span-6">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Batas Stok Minimum</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Isi 0 untuk menonaktifkan peringatan</div>
+            </div>
+          </div>
+          <div className="tile-body">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {allMats.map(mat => (
+                <div key={mat}>
+                  <label className="mb-1 block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
+                  <input
+                    type="number" min="0" step="1" className="form-control py-1.5 text-right text-xs"
+                    value={settings.stokMinimum?.[mat] ?? 0}
+                    aria-label={`Stok minimum ${mat}`}
+                    onChange={e => setSettings(s => ({
+                      ...s,
+                      stokMinimum: { ...s.stokMinimum, [mat]: parseFloat(e.target.value) || 0 },
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="tile md:col-span-12">
+          <div className="tile-head">
+            <div>
+              <div className="tile-label">Gentani</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Batas pemakaian = pcs produksi × kg/pcs</div>
+            </div>
+            <span className="chip text-steel-dim">{activeGentani} nilai aktif</span>
+          </div>
+          <div className="tile-body">
+            <div className="mb-5">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-steel-dim">Pcs per lot kecil</div>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {PRODUCTS.map(p => (
+                  <div key={p}>
+                    <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold" style={{ color: PRODUCT_TONES[p].color }}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
+                      {p}
+                    </label>
+                    <input
+                      type="number" min="1" step="1" className="form-control py-1.5 text-right text-xs"
+                      value={settings.pcsPerLotKecil?.[p] ?? DEFAULT_SETTINGS.pcsPerLotKecil[p]}
+                      aria-label={`Pcs per lot kecil ${p}`}
                       onChange={e => setSettings(s => ({
                         ...s,
-                        gentani: { ...s.gentani, [p]: { ...s.gentani?.[p], [mat]: parseFloat(e.target.value) || 0 } },
-                      }))} />
+                        pcsPerLotKecil: { ...s.pcsPerLotKecil, [p]: parseInt(e.target.value) || 1 },
+                      }))}
+                    />
                   </div>
                 ))}
               </div>
             </div>
-          ))}
-          <div className="max-w-[220px]">
-            <label className="form-label">Ambang waspada (% dari batas)</label>
-            <input type="number" min="1" max="100" step="1" className="form-control text-right"
-              value={settings.ambangWaspada ?? 90}
-              onChange={e => setSettings(s => ({ ...s, ambangWaspada: parseFloat(e.target.value) || 90 }))} />
-          </div>
-        </div>
 
-        {/* Stok minimum */}
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-[#1A3C6E] dark:text-blue-400 border-b border-slate-100 dark:border-slate-700 pb-2 mb-4">
-            Batas Stok Minimum per Material (kg)
-          </h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
-            Isi 0 untuk menonaktifkan peringatan. Dipakai pada visualisasi stok di halaman Buat Bon.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {allMats.map(mat => (
-              <div key={mat}>
-                <label className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold block mb-1">{mat}</label>
-                <input type="number" min="0" step="1" className="form-control text-right"
-                  value={settings.stokMinimum?.[mat] ?? 0}
-                  onChange={e => setSettings(s => ({
-                    ...s,
-                    stokMinimum: { ...s.stokMinimum, [mat]: parseFloat(e.target.value) || 0 },
-                  }))} />
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {PRODUCTS.map(p => (
+                <div key={p} className="min-w-0">
+                  <div className="mb-2 flex items-center gap-2 border-b border-white/[0.06] pb-2">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
+                    <span className="font-display text-lg font-semibold" style={{ color: PRODUCT_TONES[p].color }}>{p}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    {Object.keys(settings.materials[p] ?? {}).map(mat => (
+                      <div key={mat}>
+                        <label className="mb-1 block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
+                        <input
+                          type="number" min="0" step="0.01" className="form-control py-1.5 text-right text-xs"
+                          value={settings.gentani?.[p]?.[mat] ?? 0}
+                          aria-label={`Gentani ${mat} ${p}`}
+                          onChange={e => setSettings(s => ({
+                            ...s,
+                            gentani: { ...s.gentani, [p]: { ...s.gentani?.[p], [mat]: parseFloat(e.target.value) || 0 } },
+                          }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="tile md:col-span-12">
+          <div className="tile-body">
+            <div className="flex flex-wrap gap-2.5">
+              <button className="btn btn-primary" onClick={save}><Save size={14} />Simpan Pengaturan</button>
+              <button className="btn btn-outline" onClick={reset}><RotateCcw size={14} />Reset ke Default</button>
+            </div>
+            {notif === 'success' && (
+              <div className="alert alert-success mt-4 !mb-0">
+                <CheckCircle size={16} className="shrink-0" />
+                <span>Pengaturan berhasil disimpan.</span>
               </div>
-            ))}
+            )}
+            {notif === 'info' && (
+              <div className="alert alert-info mt-4 !mb-0">
+                <Info size={16} className="shrink-0" />
+                <span>Pengaturan direset ke nilai default.</span>
+              </div>
+            )}
+            <p className="mt-3 text-[10px] leading-relaxed text-steel-faint">
+              Perubahan disimpan di perangkat ini. Material baru ditambahkan dengan kebutuhan 0 kg/lot besar — isi nilainya lalu simpan.
+            </p>
           </div>
-        </div>
-
-        <div className="flex gap-3 flex-wrap">
-          <button className="btn btn-primary" onClick={save}><Save size={14} />Simpan Pengaturan</button>
-          <button className="btn btn-outline" onClick={reset}><RotateCcw size={14} />Reset ke Default</button>
-        </div>
-
-        {notif === 'success' && (
-          <div className="alert alert-success mt-4">
-            <CheckCircle size={16} className="shrink-0" />
-            <span>Pengaturan berhasil disimpan.</span>
-          </div>
-        )}
-        {notif === 'info' && (
-          <div className="alert alert-info mt-4">
-            <Info size={16} className="shrink-0" />
-            <span>Pengaturan direset ke nilai default.</span>
-          </div>
-        )}
+        </section>
       </div>
     </div>
   );

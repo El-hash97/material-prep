@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { effBonFinal, fmtNum } from '../lib/calc';
 
-// Kapasitas tabung = sisaStok + bon efektif; cairan = sisa setelah bon.
 export default function StockTubes({ lines, stokMinimum = {} }) {
   const [drained, setDrained] = useState(false);
   useEffect(() => {
@@ -10,7 +9,7 @@ export default function StockTubes({ lines, stokMinimum = {} }) {
   }, []);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
       {lines.map(l => {
         const cap = l.sisaStok + effBonFinal(l);
         const sisa = Math.max(0, cap - l.totalTepat);
@@ -18,26 +17,47 @@ export default function StockTubes({ lines, stokMinimum = {} }) {
         const pct = cap > 0 ? Math.min(100, (sisa / cap) * 100) : 0;
         const minPct = cap > 0 ? Math.min(100, (min / cap) * 100) : 0;
         const low = min > 0 && sisa < min;
+
         return (
-          <div key={l.material} className="flex flex-col items-center text-center">
-            <div className="relative w-12 h-36 rounded-b-2xl rounded-t-md border-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 overflow-hidden">
+          <div key={l.material} className="well flex flex-col items-center text-center">
+            <div className="relative h-32 w-14 overflow-hidden rounded-[3px] border border-white/[0.16] bg-iron-950/80">
               <div
-                className={`absolute bottom-0 inset-x-0 transition-[height] duration-[800ms] ease-out ${low ? 'bg-red-500' : 'bg-emerald-500'}`}
+                className="absolute inset-0 opacity-25"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(to top, rgba(255,255,255,0.45) 0 1px, transparent 1px 16px)',
+                }}
+              />
+              <div
+                className={`absolute inset-x-0 bottom-0 transition-[height] duration-[800ms] ease-out ${low ? 'bg-danger/85' : 'bg-success/80'}`}
                 style={{ height: `${drained ? pct : 100}%` }}
+              />
+              <div
+                className="absolute inset-x-0 border-t border-white/35"
+                style={{ bottom: `${drained ? pct : 100}%` }}
               />
               {min > 0 && (
                 <div
-                  className="absolute inset-x-0 border-t-2 border-dashed border-red-600"
+                  className="absolute inset-x-0 border-t border-dashed border-danger"
                   style={{ bottom: `${minPct}%` }}
                   title={`Minimum ${fmtNum(min)} kg`}
                 />
               )}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="font-display text-sm font-semibold tabular-nums text-paper drop-shadow">
+                  {cap > 0 ? `${Math.round(pct)}%` : '—'}
+                </span>
+              </div>
             </div>
-            <div className="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{l.material}</div>
-            <div className={`text-xs tabular-nums ${low ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}>
-              {fmtNum(sisa)} kg{cap > 0 ? ` · ${Math.round(pct)}%` : ''}
+            <div className="mt-2 w-full truncate text-[11px] font-semibold text-paper">{l.material}</div>
+            <div className={`text-[11px] tabular-nums ${low ? 'font-semibold text-danger' : 'text-steel-dim'}`}>
+              {fmtNum(sisa)} kg
             </div>
-            {low && <div className="text-[10px] text-red-600 dark:text-red-400">di bawah minimum ({fmtNum(min)})</div>}
+            {low && (
+              <div className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-danger">
+                di bawah minimum
+              </div>
+            )}
           </div>
         );
       })}

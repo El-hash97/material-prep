@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, ClipboardList, Archive, Settings,
   ChevronLeft, ChevronRight, X,
@@ -19,90 +18,71 @@ function NavButton({ item, active, collapsed, onClick, hasNotif }) {
     <button
       title={collapsed ? label : undefined}
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       className={[
-        'w-full flex items-center gap-3 text-sm text-left',
-        'transition-all duration-150 cursor-pointer border-none',
-        'relative border-l-[3px]',
+        'relative w-full border-l-2 text-left text-sm transition-all duration-150',
+        'flex items-center gap-3',
         collapsed ? 'justify-center px-0 py-3' : 'px-4 py-2.5',
         active
-          ? 'bg-white/[0.13] text-white border-l-sky-400 font-semibold'
-          : 'text-zinc-400 border-l-transparent hover:bg-white/8 hover:text-white font-medium',
+          ? 'border-l-signal bg-[linear-gradient(90deg,rgba(240,163,42,0.14),rgba(240,163,42,0))] font-semibold text-paper'
+          : 'border-l-transparent font-medium text-steel-dim hover:bg-white/[0.04] hover:text-paper',
       ].join(' ')}
     >
-      <Icon size={18} strokeWidth={active ? 2.5 : 2} className="shrink-0" />
+      <Icon size={17} strokeWidth={active ? 2.4 : 1.9} className="shrink-0" />
       {!collapsed && <span className="truncate">{label}</span>}
       {!collapsed && notif && hasNotif && (
-        <span className="w-2 h-2 bg-red-400 rounded-full ml-auto shrink-0 animate-pulse" />
+        <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-danger" />
       )}
       {collapsed && notif && hasNotif && (
-        <span className="absolute top-2 right-3 w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+        <span className="absolute right-3 top-2 h-1.5 w-1.5 rounded-full bg-danger" />
       )}
     </button>
   );
 }
 
-export default function Sidebar() {
-  const {
-    page, navigate,
-    sidebarCollapsed, toggleSidebarCollapsed,
-    sidebarMobileOpen, setSidebarMobileOpen,
-  } = useStore();
+function SidebarContent({
+  collapsed = false, mobile = false, page, hasOpen,
+  navigate, toggleSidebarCollapsed, setSidebarMobileOpen,
+}) {
+  return (
+    <>
+      <div className="h-[3px] stripe-accent opacity-70" />
 
-  const [hasOpen, setHasOpen] = useState(false);
-  useEffect(() => { setHasOpen(db.hasOpenShift()); }, [page]);
-
-  const sidebarBase = [
-    'fixed top-0 left-0 h-full z-40 flex flex-col',
-    'bg-zinc-900',
-    'transition-all duration-200 ease-in-out',
-    'shadow-xl',
-  ].join(' ');
-
-  // ---- Desktop sidebar ----
-  const desktopCls = [
-    sidebarBase,
-    'hidden md:flex',
-    sidebarCollapsed ? 'w-16' : 'w-[220px]',
-  ].join(' ');
-
-  // ---- Mobile sidebar (overlay drawer) ----
-  const mobileCls = [
-    sidebarBase,
-    'flex md:hidden w-[220px]',
-    sidebarMobileOpen ? 'translate-x-0' : '-translate-x-full',
-  ].join(' ');
-
-  function SidebarContent({ collapsed = false, mobile = false }) {
-    return (
-      <>
-        {/* Header */}
-        <div className={[
-          'flex items-center border-b border-white/10 shrink-0',
-          collapsed ? 'h-14 justify-center' : 'h-14 px-4 gap-2',
-        ].join(' ')}>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-white font-bold text-lg leading-none">MatPrep</div>
-              <div className="text-[#93C5FD]/70 text-[9px] mt-0.5 leading-tight font-medium truncate">
-                PT TMMIN — Divisi Casting
-              </div>
+      <div className={[
+        'flex h-16 shrink-0 items-center border-b border-white/[0.07]',
+        collapsed ? 'justify-center' : 'gap-3 px-4',
+      ].join(' ')}>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] border border-signal/40 bg-signal/10 font-display text-[15px] font-bold tracking-wide text-signal">
+          MP
+        </span>
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <div className="font-display text-[19px] font-semibold leading-none tracking-wide text-paper">
+              MatPrep
             </div>
-          )}
-          {collapsed && (
-            <span className="text-white font-bold text-lg">M</span>
-          )}
-          {mobile && (
-            <button
-              onClick={() => setSidebarMobileOpen(false)}
-              className="ml-auto text-white/60 hover:text-white p-1 rounded transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+            <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-steel-faint">
+              PT TMMIN · Divisi Casting
+            </div>
+          </div>
+        )}
+        {mobile && (
+          <button
+            onClick={() => setSidebarMobileOpen(false)}
+            className="ml-auto rounded-[4px] p-1 text-steel-dim transition-colors hover:bg-white/[0.06] hover:text-paper"
+            aria-label="Tutup navigasi"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+      <div className={collapsed ? 'px-2 pt-4' : 'px-3 pt-4'}>
+        {!collapsed && (
+          <div className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-steel-faint">
+            Menu Operasi
+          </div>
+        )}
+        <nav className="flex flex-col gap-0.5">
           {NAV_ITEMS.map(item => (
             <NavButton
               key={item.key}
@@ -114,47 +94,99 @@ export default function Sidebar() {
             />
           ))}
         </nav>
+      </div>
 
-        {/* Footer controls */}
-        <div className="border-t border-white/10 p-2 flex flex-col gap-1 shrink-0">
-          {/* Collapse toggle — desktop only */}
-          {!mobile && (
-            <button
-              onClick={toggleSidebarCollapsed}
-              className={[
-                'flex items-center gap-2.5 rounded-lg text-xs font-medium',
-                'text-zinc-400 hover:bg-white/8 hover:text-white',
-                'transition-all duration-150 cursor-pointer',
-                collapsed ? 'justify-center p-3' : 'px-3 py-2.5',
-              ].join(' ')}
-            >
-              {sidebarCollapsed
-                ? <ChevronRight size={15} strokeWidth={2} className="shrink-0" />
-                : <ChevronLeft size={15} strokeWidth={2} className="shrink-0" />}
-              {!collapsed && <span>Collapse</span>}
-            </button>
-          )}
-
-          {!collapsed && (
-            <div className="px-3 pt-1 text-[10px] text-white/20 font-medium">
-              MatPrep v1.0
+      <div className="mt-auto border-t border-white/[0.07] p-3">
+        {!collapsed ? (
+          <div className="well mb-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold text-steel">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+              Data lokal aktif
             </div>
-          )}
-        </div>
-      </>
-    );
-  }
+            <div className="mt-1 text-[11px] leading-snug text-steel-faint">
+              {hasOpen ? 'Ada shift yang masih terbuka.' : 'Semua shift sudah tertutup.'}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-3 flex justify-center" title="Data lokal aktif">
+            <span className="h-2 w-2 rounded-full bg-success" />
+          </div>
+        )}
+
+        {!mobile && (
+          <button
+            onClick={toggleSidebarCollapsed}
+            className={[
+              'flex w-full items-center gap-2.5 rounded-[4px] text-xs font-semibold text-steel-dim',
+              'transition-all duration-150 hover:bg-white/[0.05] hover:text-paper',
+              collapsed ? 'justify-center p-2.5' : 'px-2.5 py-2',
+            ].join(' ')}
+          >
+            {collapsed
+              ? <ChevronRight size={15} className="shrink-0" />
+              : <ChevronLeft size={15} className="shrink-0" />}
+            {!collapsed && <span>Ciutkan panel</span>}
+          </button>
+        )}
+
+        {!collapsed && (
+          <div className="mt-2 px-1 font-display text-[10px] uppercase tracking-[0.16em] text-steel-faint">
+            MatPrep v1.0 · Offline-first
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+export default function Sidebar() {
+  const {
+    page, navigate,
+    sidebarCollapsed, toggleSidebarCollapsed,
+    sidebarMobileOpen, setSidebarMobileOpen,
+  } = useStore();
+
+  const hasOpen = db.hasOpenShift();
+
+  const sidebarBase =
+    'fixed left-0 top-0 z-40 flex h-full flex-col border-r border-white/[0.07] bg-iron-900 transition-all duration-200 ease-in-out';
+
+  const desktopCls = [
+    sidebarBase,
+    'hidden md:flex',
+    sidebarCollapsed ? 'w-[68px]' : 'w-[236px]',
+  ].join(' ');
+
+  const mobileCls = [
+    sidebarBase,
+    'flex w-[260px] md:hidden',
+    sidebarMobileOpen ? 'translate-x-0' : '-translate-x-full',
+  ].join(' ');
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <aside className={desktopCls}>
-        <SidebarContent collapsed={sidebarCollapsed} mobile={false} />
+      <aside id="sidebar" className={desktopCls}>
+        <SidebarContent
+          collapsed={sidebarCollapsed}
+          mobile={false}
+          page={page}
+          hasOpen={hasOpen}
+          navigate={navigate}
+          toggleSidebarCollapsed={toggleSidebarCollapsed}
+          setSidebarMobileOpen={setSidebarMobileOpen}
+        />
       </aside>
 
-      {/* Mobile sidebar */}
       <aside className={mobileCls}>
-        <SidebarContent collapsed={false} mobile={true} />
+        <SidebarContent
+          collapsed={false}
+          mobile={true}
+          page={page}
+          hasOpen={hasOpen}
+          navigate={navigate}
+          toggleSidebarCollapsed={toggleSidebarCollapsed}
+          setSidebarMobileOpen={setSidebarMobileOpen}
+        />
       </aside>
     </>
   );

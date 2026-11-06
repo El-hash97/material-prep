@@ -6,22 +6,25 @@ export default function Modal() {
   if (!modal.open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-[400px] shadow-2xl border border-slate-100 dark:border-slate-700 animate-[fadeInScale_150ms_ease-out]">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 mt-0.5">
-            <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400" strokeWidth={2.5} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-[5px] border border-white/[0.12] bg-iron-850 shadow-2xl animate-fadeInScale">
+        <div className="h-[3px] stripe-accent opacity-80" />
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[4px] border border-signal/30 bg-signal/10">
+              <AlertTriangle size={17} className="text-signal" strokeWidth={2.2} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-display text-lg font-semibold leading-snug text-paper">{modal.title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-steel-dim">{modal.body}</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-[15px] font-bold text-slate-800 dark:text-slate-100 leading-snug">{modal.title}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{modal.body}</p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button className="btn btn-outline btn-sm" onClick={closeModal}>Batal</button>
+            <button className="btn btn-primary btn-sm" onClick={() => { closeModal(); modal.onOk?.(); }}>
+              Ya, Lanjutkan
+            </button>
           </div>
-        </div>
-        <div className="flex gap-2.5 justify-end mt-5">
-          <button className="btn btn-outline btn-sm" onClick={closeModal}>Batal</button>
-          <button className="btn btn-success btn-sm" onClick={() => { closeModal(); modal.onOk?.(); }}>
-            Ya, Lanjutkan
-          </button>
         </div>
       </div>
     </div>

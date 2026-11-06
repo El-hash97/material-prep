@@ -17,44 +17,51 @@ const PAGES = {
 };
 
 export default function App() {
-  const { page, sidebarCollapsed, sidebarMobileOpen, setSidebarMobileOpen } = useStore();
+  const { page, sidebarCollapsed, sidebarMobileOpen, setSidebarMobileOpen, currentBonId } = useStore();
   const PageComponent = PAGES[page] ?? Dashboard;
 
-  const mainMargin = sidebarCollapsed ? 'md:ml-16' : 'md:ml-[220px]';
+  const mainMargin = sidebarCollapsed ? 'md:ml-[68px]' : 'md:ml-[236px]';
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-slate-100">
+    <div className="min-h-screen text-paper">
 
-      {/* Mobile overlay */}
       {sidebarMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 z-30 bg-black/60 md:hidden"
           onClick={() => setSidebarMobileOpen(false)}
         />
       )}
 
       <Sidebar />
 
-      {/* Mobile top bar */}
       <div
         id="mobile-topbar"
-        className="md:hidden fixed top-0 left-0 right-0 h-14 bg-zinc-900 z-20 flex items-center px-4 gap-3 shadow-md border-b border-zinc-800"
+        className="fixed inset-x-0 top-0 z-20 flex h-14 items-center gap-3 border-b border-white/[0.08] bg-iron-900/95 px-4 backdrop-blur md:hidden"
       >
         <button
           onClick={() => setSidebarMobileOpen(true)}
-          className="text-white p-1.5 rounded-md hover:bg-white/10 transition-colors"
+          className="rounded-[4px] p-1.5 text-steel transition-colors hover:bg-white/[0.06] hover:text-paper"
+          aria-label="Buka navigasi"
         >
           <Menu size={20} />
         </button>
-        <span className="text-white font-bold text-lg flex-1">MatPrep</span>
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-[3px] border border-signal/40 bg-signal/10 font-display text-[13px] font-bold text-signal">
+            MP
+          </span>
+          <span className="font-display text-lg font-semibold tracking-wide text-paper">MatPrep</span>
+        </div>
+        <span className="chip ml-auto text-steel-dim">
+          <span className="chip-dot bg-success" />
+          Lokal
+        </span>
       </div>
 
-      {/* Main content */}
       <main
         id="main-content"
-        className={`transition-all duration-200 ${mainMargin} pt-14 md:pt-0 min-h-screen`}
+        className={`min-h-screen pt-14 transition-[margin] duration-200 ${mainMargin} md:pt-0`}
       >
-        <PageComponent />
+        <PageComponent key={page === 'tutup-shift' ? currentBonId ?? 'none' : page} />
       </main>
 
       <Modal />

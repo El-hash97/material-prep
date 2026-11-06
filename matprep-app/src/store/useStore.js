@@ -8,7 +8,10 @@ document.documentElement.classList.add('dark');
 
 const useStore = create((set) => ({
   page: 'dashboard',
-  navigate: (page) => set({ page, sidebarMobileOpen: false }),
+  navigate: (page) => {
+    set({ page, sidebarMobileOpen: false });
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  },
 
   currentBonId: null,
   setCurrentBonId: (id) => set({ currentBonId: id }),
