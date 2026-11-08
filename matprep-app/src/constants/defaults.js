@@ -17,7 +17,6 @@ export const DEFAULT_SETTINGS = {
   },
   stokMinimum: {},
   pcsPerLotKecil: { '2TR': 15, '1TR': 15, 'KAI': 120, 'CRANK': 45 },
-  gentani: {},
   ambangWaspada: 90,
   ukuranKarung: {
     'LMC': 1000, 'Inocarb': 25, 'Antimon (Sb)': 25, 'Fe Sulfur': 25,

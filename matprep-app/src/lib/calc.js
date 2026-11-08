@@ -63,10 +63,28 @@ export function buildBonLines(lotKecilMap, settings, prevClosed) {
   return { bonLines: lines, lotBesarMap };
 }
 
+// Gentani otomatis (kg/pcs) = kebutuhan per lot besar ÷ rasio ÷ pcs per lot kecil.
+// Contoh: 2 kg/lot besar ÷ 3 ÷ 15 pcs = 0,0444 kg/pcs untuk produk 2TR.
+export function calcGentani(settings) {
+  const ratio = settings.rasioKonversi > 0 ? settings.rasioKonversi : 1;
+  const pcs = { ...DEFAULT_SETTINGS.pcsPerLotKecil, ...settings.pcsPerLotKecil };
+  const out = {};
+  for (const p of PRODUCTS) {
+    const pcsPerLot = pcs[p] > 0 ? pcs[p] : 1;
+    out[p] = {};
+    for (const [mat, perLotBesar] of Object.entries(settings.materials[p] ?? {})) {
+      out[p][mat] = (perLotBesar ?? 0) / ratio / pcsPerLot;
+    }
+  }
+  return out;
+}
+
 // Pemakaian aktual vs batas gentani (pcs produksi × kg/pcs) dari bon Closed.
+// Gentani dihitung otomatis dari kebutuhan material, rasio konversi, dan pcs per lot kecil.
 // Bon dengan pemakaianAktual kosong untuk suatu material tidak dihitung untuk material itu.
 export function gentaniUsage(closedShifts, settings) {
   const pcs = { ...DEFAULT_SETTINGS.pcsPerLotKecil, ...settings.pcsPerLotKecil };
+  const gentani = calcGentani(settings);
   const ambang = settings.ambangWaspada ?? 90;
   return getAllMaterials(settings).map(material => {
     let pemakaian = 0, batas = 0;
@@ -75,7 +93,7 @@ export function gentaniUsage(closedShifts, settings) {
       if (!line || line.pemakaianAktual === null || line.pemakaianAktual === undefined) continue;
       pemakaian += line.pemakaianAktual;
       for (const p of PRODUCTS) {
-        batas += (s.lotKecilMap?.[p] ?? 0) * pcs[p] * (settings.gentani?.[p]?.[material] ?? 0);
+        batas += (s.lotKecilMap?.[p] ?? 0) * pcs[p] * (gentani[p]?.[material] ?? 0);
       }
     }
     const pct = batas > 0 ? (pemakaian / batas) * 100 : null;

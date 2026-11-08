@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Save, RotateCcw, CheckCircle, Info, Plus, Trash2, AlertTriangle, SlidersHorizontal, FlaskConical, Boxes } from 'lucide-react';
 import { db } from '../store/db';
 import { DEFAULT_SETTINGS, PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
-import { getAllMaterials } from '../lib/calc';
+import { getAllMaterials, calcGentani } from '../lib/calc';
 import useStore from '../store/useStore';
 
 export default function Settings() {
@@ -14,8 +14,9 @@ export default function Settings() {
 
   const allMats = getAllMaterials(settings);
   const materialAssignments = PRODUCTS.reduce((a, p) => a + Object.keys(settings.materials[p] ?? {}).length, 0);
+  const gentaniAuto = calcGentani(settings);
   const activeGentani = PRODUCTS.reduce(
-    (a, p) => a + Object.values(settings.gentani?.[p] ?? {}).filter(v => v > 0).length,
+    (a, p) => a + Object.keys(settings.materials[p] ?? {}).filter(m => (settings.materials[p][m] ?? 0) > 0).length,
     0,
   );
 
@@ -317,9 +318,9 @@ export default function Settings() {
           <div className="tile-head">
             <div>
               <div className="tile-label">Gentani</div>
-              <div className="mt-1.5 text-[11px] text-steel-faint">Batas pemakaian = pcs produksi × kg/pcs</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Otomatis: kg/lot besar ÷ rasio ÷ pcs per lot kecil</div>
             </div>
-            <span className="chip text-steel-dim">{activeGentani} nilai aktif</span>
+            <span className="chip text-steel-dim">{activeGentani} material aktif</span>
           </div>
           <div className="tile-body">
             <div className="mb-5">
@@ -345,31 +346,48 @@ export default function Settings() {
               </div>
             </div>
 
+            <p className="mb-5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[10px] leading-relaxed text-steel-faint">
+              Gentani dihitung otomatis dari kebutuhan material:{' '}
+              <span className="text-steel-dim">kg per lot besar ÷ rasio ({settings.rasioKonversi}) ÷ pcs per lot kecil</span>.
+              Contoh 2 kg ÷ {settings.rasioKonversi} ÷ 15 pcs = 0,0444 kg/pcs.
+            </p>
+
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              {PRODUCTS.map(p => (
-                <div key={p} className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2 border-b border-white/[0.06] pb-2">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
-                    <span className="font-display text-lg font-semibold" style={{ color: PRODUCT_TONES[p].color }}>{p}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                    {Object.keys(settings.materials[p] ?? {}).map(mat => (
-                      <div key={mat}>
-                        <label className="mb-1 block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
-                        <input
-                          type="number" min="0" step="0.01" className="form-control py-1.5 text-right text-xs"
-                          value={settings.gentani?.[p]?.[mat] ?? 0}
-                          aria-label={`Gentani ${mat} ${p}`}
-                          onChange={e => setSettings(s => ({
-                            ...s,
-                            gentani: { ...s.gentani, [p]: { ...s.gentani?.[p], [mat]: parseFloat(e.target.value) || 0 } },
-                          }))}
-                        />
+              {PRODUCTS.map(p => {
+                const mats = settings.materials[p] ?? {};
+                const pcsPerLot = settings.pcsPerLotKecil?.[p] ?? DEFAULT_SETTINGS.pcsPerLotKecil[p];
+                return (
+                  <div key={p} className="min-w-0">
+                    <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
+                        <span className="font-display text-lg font-semibold" style={{ color: PRODUCT_TONES[p].color }}>{p}</span>
                       </div>
-                    ))}
+                      <span className="text-[10px] text-steel-faint">{pcsPerLot} pcs/lot kecil</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                      {Object.keys(mats).map(mat => {
+                        const perLot = mats[mat] ?? 0;
+                        const kgPcs = gentaniAuto[p]?.[mat] ?? 0;
+                        return (
+                          <div key={mat} className="well">
+                            <label
+                              className="mb-1 block truncate text-[10px] font-semibold text-steel-dim"
+                              title={`${perLot} kg/lot besar ÷ ${settings.rasioKonversi} ÷ ${pcsPerLot} pcs`}
+                            >
+                              {mat}
+                            </label>
+                            <div className="readout text-base">
+                              {kgPcs.toLocaleString('id-ID', { maximumFractionDigits: 4 })}
+                            </div>
+                            <div className="text-[9px] uppercase tracking-[0.1em] text-steel-faint">kg/pcs</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

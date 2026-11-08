@@ -428,7 +428,7 @@ export default function Dashboard() {
               <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 px-4 text-center">
                 <Database size={18} className="text-steel-faint" />
                 <p className="text-xs leading-relaxed text-steel-faint">
-                  Belum ada data gentani. Isi pengaturan dan tutup shift dengan pemakaian aktual.
+                  Belum ada data gentani. Gentani dihitung otomatis — tutup shift dengan pemakaian aktual.
                 </p>
               </div>
             ) : (
