@@ -2,7 +2,7 @@ import { RefreshCw, Save, Printer, Package, Plus, AlertTriangle, Info, Scale } f
 import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
-import { buildBonLines, calcLotBesar, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
+import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
 import { printBon } from '../lib/print';
 import StockTubes from '../components/StockTubes';
 
@@ -53,7 +53,13 @@ export default function Planning() {
   }
 
   const hasBon = calculatedBonLines.length > 0 && !bonSaved;
-  const zeroMats = calculatedBonLines.filter(l => effBonFinal(l) === 0 && l.totalTepat > 0).map(l => l.material);
+  const tubeMode = hasBon ? 'plan' : calculatedBonLines.length > 0 ? 'saved' : 'pre';
+  const tubeLines = calculatedBonLines.length > 0
+    ? calculatedBonLines
+    : getAllMaterials(settings).map(material => ({
+        material, sisaStok: prevSisaMap[material] ?? 0, totalTepat: 0, bonFinal: 0, bonFinalOverride: null,
+      }));
+  const zeroMats =calculatedBonLines.filter(l => effBonFinal(l) === 0 && l.totalTepat > 0).map(l => l.material);
 
   let totTepat = 0, totFinal = 0, totSisa = 0;
   calculatedBonLines.forEach(l => {
@@ -245,22 +251,13 @@ export default function Planning() {
             <div>
               <div className="tile-label">Visualisasi Stok</div>
               <div className="mt-1.5 text-[11px] text-steel-faint">
-                Tabung penuh = sisa sebelumnya + bon. Isi = sisa setelah bon.
+                Hijau = stok (kg). {hasBon ? 'Orange transparan = rencana bon, jadi hijau setelah bon disimpan.' : 'Tekan Hitung Bon untuk melihat rencana bon.'}
               </div>
             </div>
             <span className="chip text-steel-dim">Batas minimum</span>
           </div>
           <div className="tile-body">
-            {hasBon ? (
-              <StockTubes lines={calculatedBonLines} stokMinimum={settings.stokMinimum} />
-            ) : (
-              <div className="flex min-h-[180px] flex-col items-center justify-center gap-2 text-center">
-                <Scale size={18} className="text-steel-faint" />
-                <p className="max-w-[300px] text-xs leading-relaxed text-steel-faint">
-                  Isi lot kecil lalu tekan Hitung Bon untuk melihat posisi stok tiap material.
-                </p>
-              </div>
-            )}
+            <StockTubes lines={tubeLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={tubeMode} />
           </div>
         </section>
 

@@ -307,7 +307,7 @@ export default function Settings() {
         <section className="tile md:col-span-6">
           <div className="tile-head">
             <div>
-              <div className="tile-label">Batas Stok Minimum</div>
+              <div className="tile-label">Batas Minimum & Kapasitas Tabung</div>
               <div className="mt-1.5 text-[11px] text-steel-faint">Isi 0 untuk menonaktifkan peringatan</div>
             </div>
           </div>
@@ -323,6 +323,25 @@ export default function Settings() {
                     onChange={e => setSettings(s => ({
                       ...s,
                       stokMinimum: { ...s.stokMinimum, [mat]: parseFloat(e.target.value) || 0 },
+                    }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mb-2 mt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-steel-dim">
+              Kapasitas tabung (kg) · 0 = otomatis
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {allMats.map(mat => (
+                <div key={mat}>
+                  <label className="mb-1 block truncate text-[10px] font-semibold text-steel-dim" title={mat}>{mat}</label>
+                  <input
+                    type="number" min="0" step="1" className="form-control py-1.5 text-right text-xs"
+                    value={settings.kapasitasTabung?.[mat] ?? 0}
+                    aria-label={`Kapasitas tabung ${mat}`}
+                    onChange={e => setSettings(s => ({
+                      ...s,
+                      kapasitasTabung: { ...s.kapasitasTabung, [mat]: parseFloat(e.target.value) || 0 },
                     }))}
                   />
                 </div>

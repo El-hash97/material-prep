@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
     'CRANK': { 'Mg Lamet': 6,   'Ultraseed CE Inoculant': 3, 'Sn': 2, 'Cu': 4 },
   },
   stokMinimum: {},
+  kapasitasTabung: {},
   pcsPerLotKecil: { '2TR': 15, '1TR': 15, 'KAI': 120, 'CRANK': 45 },
   ambangWaspada: 90,
   ukuranKarung: {
