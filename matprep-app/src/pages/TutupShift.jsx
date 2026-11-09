@@ -9,15 +9,6 @@ function prepareBon(id) {
   const b = db.getShiftById(id);
   if (!b) return { bon: null, pemakaian: {} };
 
-  let changed = false;
-  b.bonLines.forEach(l => {
-    if (l.pemakaianAktual === null) {
-      l.pemakaianAktual = l.totalTepat;
-      changed = true;
-    }
-  });
-  if (changed) db.updateShift(id, { bonLines: b.bonLines });
-
   const pemakaian = {};
   b.bonLines.forEach((l, i) => { pemakaian[i] = l.pemakaianAktual ?? ''; });
   return { bon: { ...b }, pemakaian };
@@ -44,9 +35,10 @@ export default function TutupShift() {
       const fresh = db.getShiftById(currentBonId);
       const updLines = fresh.bonLines.map(l => {
         const eff = effBonFinal(l);
-        const a = l.pemakaianAktual ?? 0;
+        // pemakaian aktual kosong tetap null (tidak dihitung ke gentani); sisa akhir pakai angka teoritis
         const totalTersedia = (l.sisaStok ?? 0) + eff;
-        return { ...l, pemakaianAktual: a, sisaAkhir: Math.max(0, totalTersedia - a) };
+        const dipakai = l.pemakaianAktual ?? l.totalTepat;
+        return { ...l, sisaAkhir: Math.max(0, totalTersedia - dipakai) };
       });
       db.updateShift(currentBonId, {
         status: 'Closed', bonLines: updLines, closedAt: new Date().toISOString(),
@@ -121,8 +113,8 @@ export default function TutupShift() {
               <div className="alert alert-info !mb-0">
                 <ClipboardCheck size={16} className="mt-0.5 shrink-0" />
                 <span>
-                  Pemakaian aktual telah diisi otomatis sesuai total tepat.
-                  Anda dapat mengubah nilai jika ada perbedaan aktual.
+                  Isi pemakaian aktual per material. Yang dikosongkan tidak dihitung ke gentani,
+                  dan sisa stok diteruskan memakai angka teoritis (total tepat).
                 </span>
               </div>
             )}
@@ -202,7 +194,7 @@ export default function TutupShift() {
                             <input
                               type="number" min="0" step="0.1"
                               className="form-control w-28 py-1.5 text-right text-xs"
-                              value={pemakaian[idx] ?? ''} placeholder="0"
+                              value={pemakaian[idx] ?? ''} placeholder={String(Math.round(l.totalTepat * 10) / 10)}
                               aria-label={`Pemakaian aktual ${l.material}`}
                               onChange={e => onPemakaianChange(idx, e.target.value)}
                             />
