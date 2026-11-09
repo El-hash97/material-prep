@@ -46,7 +46,6 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div className="h-[3px] stripe-accent opacity-70" />
 
       <div className={[
         'flex h-16 shrink-0 items-center border-b border-white/[0.07]',

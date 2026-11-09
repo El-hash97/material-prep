@@ -8,7 +8,6 @@ export default function Modal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]">
       <div className="w-full max-w-[420px] overflow-hidden rounded-[5px] border border-white/[0.12] bg-iron-850 shadow-2xl animate-fadeInScale">
-        <div className="h-[3px] stripe-accent opacity-80" />
         <div className="p-5">
           <div className="flex items-start gap-3">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-[4px] border border-signal/30 bg-signal/10">

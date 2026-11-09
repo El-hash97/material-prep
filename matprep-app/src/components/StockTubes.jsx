@@ -9,12 +9,19 @@ export default function StockTubes({ lines, stokMinimum = {} }) {
   }, []);
 
   return (
+    <>
+    <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-steel-dim">
+      <span><i className="mr-1 inline-block h-2 w-2 bg-success" />Sisa stok</span>
+      <span><i className="mr-1 inline-block h-2 w-2 bg-success/25" />Rencana bon</span>
+      <span><i className="mr-1 inline-block h-2 w-2 bg-orange-500/45" />Setelah pemakaian</span>
+    </div>
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
       {lines.map(l => {
         const cap = l.sisaStok + effBonFinal(l);
         const sisa = Math.max(0, cap - l.totalTepat);
         const min = stokMinimum[l.material] ?? 0;
         const pct = cap > 0 ? Math.min(100, (sisa / cap) * 100) : 0;
+        const stokPct = cap > 0 ? Math.min(100, (l.sisaStok / cap) * 100) : 0;
         const minPct = cap > 0 ? Math.min(100, (min / cap) * 100) : 0;
         const low = min > 0 && sisa < min;
 
@@ -28,12 +35,17 @@ export default function StockTubes({ lines, stokMinimum = {} }) {
                     'repeating-linear-gradient(to top, rgba(255,255,255,0.45) 0 1px, transparent 1px 16px)',
                 }}
               />
+              {/* rencana bon: hijau transparan, dari sisa stok sampai kapasitas */}
+              <div className="absolute inset-x-0 bottom-0 bg-success/25" style={{ height: '100%' }} />
+              {/* sesudah pemakaian: orange transparan */}
               <div
-                className={`absolute inset-x-0 bottom-0 transition-[height] duration-[800ms] ease-out ${low ? 'bg-danger/85' : 'bg-success/80'}`}
+                className="absolute inset-x-0 bottom-0 bg-orange-500/45 transition-[height] duration-[800ms] ease-out"
                 style={{ height: `${drained ? pct : 100}%` }}
               />
+              {/* sisa stok sebelum bon: hijau solid, paling bawah & paling atas z-order */}
+              <div className="absolute inset-x-0 bottom-0 bg-success" style={{ height: `${stokPct}%` }} />
               <div
-                className="absolute inset-x-0 border-t border-white/35"
+                className="absolute inset-x-0 border-t border-orange-400"
                 style={{ bottom: `${drained ? pct : 100}%` }}
               />
               {min > 0 && (
@@ -62,5 +74,6 @@ export default function StockTubes({ lines, stokMinimum = {} }) {
         );
       })}
     </div>
+    </>
   );
 }

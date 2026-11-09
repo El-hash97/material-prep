@@ -26,8 +26,8 @@ export default {
         info: '#6E9FE8',
       },
       fontFamily: {
-        sans: ['Barlow', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['"Barlow Condensed"', 'Barlow', 'ui-sans-serif', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['"Space Grotesk"', '"Plus Jakarta Sans"', 'ui-sans-serif', 'sans-serif'],
       },
       keyframes: {
         fadeInScale: {

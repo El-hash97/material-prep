@@ -1,39 +1,73 @@
 import { DEFAULT_SETTINGS } from '../constants/defaults';
 
-const SHIFTS_KEY   = 'matprep_shifts';
-const SETTINGS_KEY = 'matprep_settings';
+// Data disimpan di Neon lewat /api (Netlify Function). Cache memori diisi sekali oleh db.init(),
+// sehingga pembacaan tetap sinkron; penulisan memperbarui cache lalu dikirim ke server berurutan.
+const OLD_SHIFTS_KEY   = 'matprep_shifts';
+const OLD_SETTINGS_KEY = 'matprep_settings';
 
-function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+const deepCopy = o => JSON.parse(JSON.stringify(o));
+
+let settings = null;   // null = belum pernah disimpan, pakai default
+let shifts = [];       // terbaru di depan
+
+async function call(method, path, body) {
+  const res = await fetch(`/api/${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API ${method} /${path} gagal (${res.status})`);
+  return res.json();
+}
+
+let queue = Promise.resolve();
+let warned = false;
+function persist(method, path, body) {
+  queue = queue.then(() => call(method, path, body)).catch(e => {
+    console.error(e);
+    if (!warned) { warned = true; alert('Gagal menyimpan ke database. Periksa koneksi lalu muat ulang halaman.'); }
+  });
+}
+
+function readOld(key, fallback) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch { return fallback; }
+}
 
 export const db = {
-  getSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      return raw ? JSON.parse(raw) : deepCopy(DEFAULT_SETTINGS);
-    } catch { return deepCopy(DEFAULT_SETTINGS); }
+  async init() {
+    const remote = await call('GET', 'data');
+    settings = remote.settings;
+    shifts = remote.shifts;
+    // Impor sekali: database kosong tapi localStorage lama berisi data.
+    if (settings === null && shifts.length === 0) {
+      const oldSettings = readOld(OLD_SETTINGS_KEY, null);
+      const oldShifts = readOld(OLD_SHIFTS_KEY, []);
+      if (oldSettings || oldShifts.length) {
+        const r = await call('POST', 'import', { settings: oldSettings, shifts: oldShifts });
+        if (r.imported) { settings = oldSettings; shifts = oldShifts; }
+      }
+    }
   },
-  saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); },
 
-  getShifts() {
-    try {
-      const raw = localStorage.getItem(SHIFTS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-  },
-  saveShifts(arr) { localStorage.setItem(SHIFTS_KEY, JSON.stringify(arr)); },
+  getSettings() { return deepCopy(settings ?? DEFAULT_SETTINGS); },
+  saveSettings(s) { settings = deepCopy(s); persist('PUT', 'settings', settings); },
 
+  getShifts() { return deepCopy(shifts); },
   addShift(shift) {
-    const arr = this.getShifts();
-    arr.unshift(shift);
-    this.saveShifts(arr);
+    shifts.unshift(deepCopy(shift));
+    persist('POST', 'shifts', shift);
   },
   updateShift(id, updates) {
-    const arr = this.getShifts();
-    const i = arr.findIndex(s => s.id === id);
-    if (i >= 0) { Object.assign(arr[i], updates); this.saveShifts(arr); }
+    const i = shifts.findIndex(s => s.id === id);
+    if (i < 0) return;
+    Object.assign(shifts[i], deepCopy(updates));
+    persist('PATCH', `shifts/${encodeURIComponent(id)}`, updates);
   },
-  getShiftById(id) { return this.getShifts().find(s => s.id === id) ?? null; },
-  deleteShift(id)  { this.saveShifts(this.getShifts().filter(s => s.id !== id)); },
-  getLastClosed()  { return this.getShifts().find(s => s.status === 'Closed') ?? null; },
-  hasOpenShift()   { return this.getShifts().some(s => s.status === 'Open'); },
+  getShiftById(id) { const s = shifts.find(x => x.id === id); return s ? deepCopy(s) : null; },
+  deleteShift(id) {
+    shifts = shifts.filter(s => s.id !== id);
+    persist('DELETE', `shifts/${encodeURIComponent(id)}`);
+  },
+  getLastClosed() { const s = shifts.find(x => x.status === 'Closed'); return s ? deepCopy(s) : null; },
+  hasOpenShift() { return shifts.some(s => s.status === 'Open'); },
 };

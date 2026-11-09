@@ -79,6 +79,13 @@ export function calcGentani(settings) {
   return out;
 }
 
+// Tampilkan gentani dalam g/pcs bila nilainya di bawah 10 kg/pcs.
+export function fmtGentani(kgPcs) {
+  const n = Number(kgPcs) || 0;
+  if (n < 10) return { value: n * 1000, unit: 'g/pcs' };
+  return { value: n, unit: 'kg/pcs' };
+}
+
 // Pemakaian aktual vs batas gentani (pcs produksi × kg/pcs) dari bon Closed.
 // Gentani dihitung otomatis dari kebutuhan material, rasio konversi, dan pcs per lot kecil.
 // Bon dengan pemakaianAktual kosong untuk suatu material tidak dihitung untuk material itu.

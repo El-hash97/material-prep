@@ -17,7 +17,7 @@ Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Lege
 
 Chart.defaults.color = '#7C8588';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
-Chart.defaults.font.family = 'Barlow, sans-serif';
+Chart.defaults.font.family = 'Plus Jakarta Sans, sans-serif';
 
 const logTicks = axis => {
   axis.ticks = axis.ticks.filter(t => Number.isInteger(Math.log10(t.value)));

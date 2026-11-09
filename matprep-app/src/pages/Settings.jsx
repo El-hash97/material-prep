@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Save, RotateCcw, CheckCircle, Info, Plus, Trash2, AlertTriangle, SlidersHorizontal, FlaskConical, Boxes } from 'lucide-react';
 import { db } from '../store/db';
 import { DEFAULT_SETTINGS, PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
-import { getAllMaterials, calcGentani } from '../lib/calc';
+import { getAllMaterials, calcGentani, fmtGentani } from '../lib/calc';
 import useStore from '../store/useStore';
 
 export default function Settings() {
   const { showModal } = useStore();
   const [settings, setSettings] = useState(() => db.getSettings());
   const [notif, setNotif] = useState('');
-  const [draft, setDraft] = useState({ nama: '', produk: '2TR', ukuran: 25 });
+  const [draft, setDraft] = useState({ nama: '', produks: ['2TR'], ukuran: 25 });
   const [formErr, setFormErr] = useState('');
 
   const allMats = getAllMaterials(settings);
@@ -31,7 +31,7 @@ export default function Settings() {
       const def = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       db.saveSettings(def);
       setSettings(def);
-      setDraft({ nama: '', produk: '2TR', ukuran: 25 });
+      setDraft({ nama: '', produks: ['2TR'], ukuran: 25 });
       setFormErr('');
       setNotif('info');
       setTimeout(() => setNotif(''), 3000);
@@ -46,15 +46,20 @@ export default function Settings() {
     }
     const existing = allMats.find(m => m.toLowerCase() === nama.toLowerCase());
     const finalName = existing ?? nama;
-    if (settings.materials[draft.produk]?.[finalName] !== undefined) {
-      setFormErr(`Material "${finalName}" sudah ada untuk produk ${draft.produk}.`);
+    if (!draft.produks.length) {
+      setFormErr('Pilih minimal 1 produk.');
+      return;
+    }
+    const dup = draft.produks.filter(p => settings.materials[p]?.[finalName] !== undefined);
+    if (dup.length) {
+      setFormErr(`Material "${finalName}" sudah ada untuk produk ${dup.join(', ')}.`);
       return;
     }
     setSettings(s => ({
       ...s,
       materials: {
         ...s.materials,
-        [draft.produk]: { ...(s.materials[draft.produk] ?? {}), [finalName]: 0 },
+        ...Object.fromEntries(draft.produks.map(p => [p, { ...(s.materials[p] ?? {}), [finalName]: 0 }])),
       },
       ukuranKarung: {
         ...s.ukuranKarung,
@@ -220,7 +225,7 @@ export default function Settings() {
             </div>
           </div>
           <div className="tile-body">
-            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_150px_120px_auto]">
+            <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_auto_120px_auto]">
               <div>
                 <label className="form-label" htmlFor="draft-nama">Nama material</label>
                 <input
@@ -231,13 +236,25 @@ export default function Settings() {
                 />
               </div>
               <div>
-                <label className="form-label" htmlFor="draft-produk">Produk</label>
-                <select
-                  id="draft-produk" className="form-control cursor-pointer" value={draft.produk}
-                  onChange={e => { setDraft(d => ({ ...d, produk: e.target.value })); setFormErr(''); }}
-                >
-                  {PRODUCTS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <span className="form-label">Produk</span>
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 py-1.5">
+                  {PRODUCTS.map(p => (
+                    <label key={p} className="flex cursor-pointer items-center gap-1.5 text-xs text-paper">
+                      <input
+                        type="checkbox" className="cursor-pointer accent-[#F0A32A]"
+                        checked={draft.produks.includes(p)}
+                        onChange={e => {
+                          setDraft(d => ({
+                            ...d,
+                            produks: e.target.checked ? [...d.produks, p] : d.produks.filter(x => x !== p),
+                          }));
+                          setFormErr('');
+                        }}
+                      />
+                      {p}
+                    </label>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="form-label" htmlFor="draft-ukuran">Karung (kg)</label>
@@ -318,7 +335,7 @@ export default function Settings() {
           <div className="tile-head">
             <div>
               <div className="tile-label">Gentani</div>
-              <div className="mt-1.5 text-[11px] text-steel-faint">Otomatis: kg/lot besar ÷ rasio ÷ pcs per lot kecil</div>
+              <div className="mt-1.5 text-[11px] text-steel-faint">Otomatis: kg/lot besar ÷ rasio ÷ pcs per lot kecil · di bawah 10 kg ditampilkan g/pcs</div>
             </div>
             <span className="chip text-steel-dim">{activeGentani} material aktif</span>
           </div>
@@ -349,7 +366,7 @@ export default function Settings() {
             <p className="mb-5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[10px] leading-relaxed text-steel-faint">
               Gentani dihitung otomatis dari kebutuhan material:{' '}
               <span className="text-steel-dim">kg per lot besar ÷ rasio ({settings.rasioKonversi}) ÷ pcs per lot kecil</span>.
-              Contoh 2 kg ÷ {settings.rasioKonversi} ÷ 15 pcs = 0,0444 kg/pcs.
+              Nilai di bawah 10 kg/pcs ditampilkan dalam g/pcs — contoh 2 kg ÷ {settings.rasioKonversi} ÷ 15 pcs = 44,44 g/pcs.
             </p>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -366,11 +383,11 @@ export default function Settings() {
                       <span className="text-[10px] text-steel-faint">{pcsPerLot} pcs/lot kecil</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                      {Object.keys(mats).map(mat => {
+                      {allMats.map(mat => {
                         const perLot = mats[mat] ?? 0;
-                        const kgPcs = gentaniAuto[p]?.[mat] ?? 0;
+                        const shown = fmtGentani(gentaniAuto[p]?.[mat] ?? 0);
                         return (
-                          <div key={mat} className="well">
+                          <div key={mat} className={`well ${mats[mat] === undefined ? 'opacity-40' : ''}`}>
                             <label
                               className="mb-1 block truncate text-[10px] font-semibold text-steel-dim"
                               title={`${perLot} kg/lot besar ÷ ${settings.rasioKonversi} ÷ ${pcsPerLot} pcs`}
@@ -378,9 +395,9 @@ export default function Settings() {
                               {mat}
                             </label>
                             <div className="readout text-base">
-                              {kgPcs.toLocaleString('id-ID', { maximumFractionDigits: 4 })}
+                              {shown.value.toLocaleString('id-ID', { maximumFractionDigits: shown.unit === 'g/pcs' ? 2 : 3 })}
                             </div>
-                            <div className="text-[9px] uppercase tracking-[0.1em] text-steel-faint">kg/pcs</div>
+                            <div className="text-[9px] uppercase tracking-[0.1em] text-steel-faint">{shown.unit}</div>
                           </div>
                         );
                       })}

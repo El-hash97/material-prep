@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
-const { gentaniUsage, calcGentani } = await vite.ssrLoadModule('/src/lib/calc.js');
+const { gentaniUsage, calcGentani, fmtGentani } = await vite.ssrLoadModule('/src/lib/calc.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
 
 // 2 kg/lot besar ÷ 3 ÷ 15 pcs = 0,0444 kg/pcs
@@ -14,6 +14,11 @@ const example = {
   materials: { ...DEFAULT_SETTINGS.materials, '2TR': { ...DEFAULT_SETTINGS.materials['2TR'], LMC: 2 } },
 };
 assert.ok(Math.abs(calcGentani(example)['2TR'].LMC - 2 / 3 / 15) < 1e-12);
+// Nilai di bawah 10 kg/pcs tampil sebagai g/pcs.
+assert.equal(fmtGentani(calcGentani(example)['2TR'].LMC).unit, 'g/pcs');
+assert.ok(Math.abs(fmtGentani(calcGentani(example)['2TR'].LMC).value - 44.444) < 0.001);
+assert.deepEqual(fmtGentani(10), { value: 10, unit: 'kg/pcs' });
+assert.deepEqual(fmtGentani(12.5), { value: 12.5, unit: 'kg/pcs' });
 
 // 90 kg/lot besar ÷ 3 ÷ 15 pcs = 2 kg/pcs
 const settings = {
