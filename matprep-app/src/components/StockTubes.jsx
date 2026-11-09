@@ -3,6 +3,7 @@ import { effBonFinal, fmtNum } from '../lib/calc';
 // mode: 'pre' (belum hitung bon) | 'plan' (rencana bon, orange transparan) | 'saved' (bon sudah disimpan, hijau solid)
 export default function StockTubes({ lines, stokMinimum = {}, kapasitas = {}, mode = 'pre' }) {
   const showPlan = mode === 'plan';
+  const sharedMax = Math.max(0, ...lines.map(l => l.sisaStok + (mode === 'pre' ? 0 : effBonFinal(l))));
   return (
     <>
     <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-steel-dim">
@@ -15,8 +16,8 @@ export default function StockTubes({ lines, stokMinimum = {}, kapasitas = {}, mo
         const bon = mode === 'pre' ? 0 : effBonFinal(l);
         const solid = mode === 'saved' ? l.sisaStok + bon : l.sisaStok;
         const planTop = l.sisaStok + bon;
-        // kapasitas manual dari Settings; kalau kosong: max(stok + bon, 3 × minimum)
-        const cap = Math.max(kapasitas[l.material] || 3 * min, planTop);
+        // kapasitas manual dari Settings; kosong: 3 × minimum; kosong juga: skala bersama (stok terbesar)
+        const cap = Math.max(kapasitas[l.material] || 3 * min || sharedMax, planTop);
         const pct = v => (cap > 0 ? Math.min(100, (v / cap) * 100) : 0);
         const sisaPakai = l.sisaStok + bon - l.totalTepat;
         const low = min > 0 && (mode === 'pre' ? l.sisaStok : sisaPakai) < min;
