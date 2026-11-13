@@ -12,6 +12,7 @@ import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { getAllMaterials, effBonFinal, formatDate, gentaniUsage, fmtNum } from '../lib/calc';
+import MaterialIcon from '../components/MaterialIcon';
 
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
@@ -465,7 +466,10 @@ export default function Dashboard() {
                   return (
                     <div key={r.material} className="py-2.5 first:pt-0 last:pb-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-[13px] font-semibold text-paper">{r.material}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <MaterialIcon material={r.material} />
+                          <span className="truncate text-[13px] font-semibold text-paper">{r.material}</span>
+                        </span>
                         <span className={`shrink-0 text-[11px] font-bold tabular-nums ${textTone}`}>{pct.toFixed(0)}%</span>
                       </div>
                       <div className="relative mt-1.5">

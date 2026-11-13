@@ -4,6 +4,7 @@ import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
 import { printBon } from '../lib/print';
+import MaterialIcon from '../components/MaterialIcon';
 import { lazy, Suspense } from 'react';
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
@@ -236,7 +237,10 @@ export default function Planning() {
               <div className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
                 {Object.entries(prevSisaMap).filter(([, v]) => v > 0).map(([mat, sisa]) => (
                   <div key={mat} className="flex items-center justify-between gap-3 border-b border-white/[0.05] py-2">
-                    <span className="truncate text-[13px] font-semibold text-paper">{mat}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <MaterialIcon material={mat} />
+                      <span className="truncate text-[13px] font-semibold text-paper">{mat}</span>
+                    </span>
                     <span className="shrink-0 font-display text-lg font-semibold tabular-nums text-success">
                       {fmtNum(sisa)} <span className="text-[11px] font-medium text-steel-faint">kg</span>
                     </span>
@@ -304,8 +308,13 @@ export default function Planning() {
                       return (
                         <tr key={l.material} className={`table-row ${eff === 0 ? 'opacity-55' : ''}`}>
                           <td className="px-3 py-2.5">
-                            <div className="font-semibold text-paper">{l.material}</div>
-                            <div className="text-[10px] text-steel-faint">{fmtNum(l.ukuranKarung)} kg/karung</div>
+                            <div className="flex items-center gap-2.5">
+                              <MaterialIcon material={l.material} className="h-9 w-9" />
+                              <div>
+                                <div className="font-semibold text-paper">{l.material}</div>
+                                <div className="text-[10px] text-steel-faint">{fmtNum(l.ukuranKarung)} kg/karung</div>
+                              </div>
+                            </div>
                           </td>
                           <td className="px-3 py-2.5 text-xs text-steel-dim">{produkStr}</td>
                           <td className="num-cell px-3 py-2.5 tabular-nums text-steel">{fmtNum(l.totalTepat)}</td>

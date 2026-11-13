@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { effBonFinal, fmtNum } from '../lib/calc';
+import MaterialIcon from './MaterialIcon';
 
 const IMGS = import.meta.glob('../assets/inokulasi/*.jpg', { eager: true, import: 'default' });
 const img = id => IMGS[`../assets/inokulasi/${id}.jpg`];
@@ -519,9 +520,7 @@ export default function MejaInokulasi3D({ lines, stokMinimum = {}, kapasitas = {
                 onClick={() => choose(l.material)}
                 className={`flex w-full items-start gap-2.5 rounded-[4px] border p-2 text-left transition-colors ${on ? 'border-signal/60 bg-iron-800' : 'border-transparent hover:bg-white/[0.04]'}`}
               >
-                {c
-                  ? <img src={img(c.id)} alt="" className="h-10 w-10 shrink-0 rounded-[3px] object-cover" />
-                  : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[3px] border border-white/10 text-[10px] text-steel-faint">—</span>}
+                <MaterialIcon material={l.material} fallback={c && img(c.id)} className="h-10 w-10 rounded-[3px]" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12px] font-semibold text-paper">{l.material}</span>
