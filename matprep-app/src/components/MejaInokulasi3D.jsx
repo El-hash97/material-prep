@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { effBonFinal, fmtNum } from '../lib/calc';
 
 const IMGS = import.meta.glob('../assets/inokulasi/*.jpg', { eager: true, import: 'default' });
@@ -19,8 +20,14 @@ const COMP = [
   { id: 'superseed', material: 'Superseed', short: 'Superseed 75', kind: 'granule', size: .0095, color: 0x48433f, cat: 'Inokulan (FeSi75 + Sr)', desc: 'Inokulan ferosilikon 75% dengan Strontium, efektif untuk besi cor kelabu (FC); rendah Ca dan Al.' },
   { id: 'mglamet', material: 'Mg Lamet', short: 'Mg Lamet', kind: 'chunk', size: .04, color: 0x2e3033, cat: 'Nodulizer (FeSiMg + La)', desc: 'Bongkahan FeSiMg dengan Lanthanum untuk nodularisasi; La menetralkan elemen pengganggu dan menambah jumlah nodul.' },
 ];
-const IDX = Object.fromEntries(COMP.map((c, i) => [c.material, i]));
-const where = i => (i < 3 ? `Box kiri depan · kompartemen ${i + 1}` : `Hopper depan no. ${i - 2}`);
+// Material curah di samping meja (dari foto lantai produksi). Stok mengikuti material dengan nama ini bila ada.
+const BULK = [
+  { id: 'carbon', material: 'Carbon', short: 'Carbon', x: -3.05, cat: 'Carbon · karung di pallet', where: 'Pallet di kiri meja', desc: 'Karung carbon hijau disusun berlapis di atas pallet dan dibungkus stretch film.' },
+  { id: 'fesi', material: 'Ferro Silicon', short: 'Ferro Silicon', x: 3.0, cat: 'Ferro silicon · jumbo bag', where: 'Jumbo bag di kanan meja', desc: 'Ferro silicon dalam jumbo bag di atas pallet, untuk menaikkan kadar Si pada cairan besi.' },
+];
+const ITEMS = [...COMP, ...BULK];
+const IDX = Object.fromEntries(ITEMS.map((c, i) => [c.material, i]));
+const where = i => ITEMS[i].where ?? (i < 3 ? `Box kiri depan · kompartemen ${i + 1}` : `Hopper depan no. ${i - 2}`);
 const clamp01 = v => Math.max(0, Math.min(1, v));
 
 // Logika sama dengan tabung stok lama: mode 'pre' | 'plan' (orange = rencana bon) | 'saved'
@@ -53,14 +60,14 @@ function buildScene(view, onPick) {
   view.appendChild(labelR.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111518); scene.fog = new THREE.Fog(0x111518, 10, 22);
+  scene.background = new THREE.Color(0x111518); scene.fog = new THREE.Fog(0x111518, 14, 30);
   const camera = new THREE.PerspectiveCamera(40, 1, .05, 60);
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * .495; controls.minDistance = 1; controls.maxDistance = 11;
+  controls.enableDamping = true; controls.maxPolarAngle = Math.PI * .495; controls.minDistance = 1; controls.maxDistance = 15;
 
   scene.add(new THREE.HemisphereLight(0xdfe8f0, 0x3a3530, 1.4));
   const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(3, 6, 5); sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 }); sun.shadow.bias = -.0005; scene.add(sun);
+  sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); sun.shadow.bias = -.0005; scene.add(sun);
   const back = new THREE.DirectionalLight(0xffd2a0, .6); back.position.set(-4, 3, -5); scene.add(back);
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x1b2125, roughness: .95 }));
@@ -167,6 +174,78 @@ function buildScene(view, onPick) {
     new THREE.MeshStandardMaterial({ map: frontBoard, roughness: .7 }), new THREE.MeshStandardMaterial({ map: backBoard, roughness: .7 })]);
   board.position.set(0, 1.77, -.67); board.castShadow = true; scene.add(board);
 
+  // ---------- material curah: pallet karung Carbon (kiri) & jumbo bag Ferro Silicon (kanan) ----------
+  const wood = new THREE.MeshStandardMaterial({ color: 0x9a6b3f, roughness: .9 });
+  const PAL = .122; // tinggi atas pallet
+  function pallet(x, z, w, d) {
+    for (const sx of [x - w / 2 + .04, x, x + w / 2 - .04]) boxMM(sx - .04, 0, z - d / 2, sx + .04, .1, z + d / 2, wood);
+    for (let k = 0; k < 7; k++) { const zc = z - d / 2 + .05 + k * (d - .1) / 6; boxMM(x - w / 2, .1, zc - .05, x + w / 2, PAL, zc + .05, wood); }
+  }
+  const BZ = .05; // z tengah material curah
+  const [CX, FX] = BULK.map(b => b.x);
+  const brnd = mulberry32(11), bd = new THREE.Object3D();
+
+  // Carbon: bak baja rendah, pallet, 6 lapis x 6 karung (orientasi selang-seling), stretch film
+  for (const [a, b, c, d] of [[-.66, -.66, .66, -.64], [-.66, .64, .66, .66], [-.66, -.66, -.64, .66], [.64, -.66, .66, .66]]) boxMM(CX + a, 0, BZ + b, CX + c, .3, BZ + d, steel);
+  pallet(CX, BZ, 1.1, 1.1);
+  const SACK_H = .12, LAYERS = 6;
+  const sackInst = new THREE.InstancedMesh(new RoundedBoxGeometry(.54, SACK_H, .35, 3, .055), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .85 }), LAYERS * 6);
+  sackInst.castShadow = sackInst.receiveShadow = true; scene.add(sackInst);
+  {
+    const green = new THREE.Color(0x6aa595), col = new THREE.Color();
+    let k = 0;
+    for (let ly = 0; ly < LAYERS; ly++) {
+      const rot = ly % 2 === 1;
+      for (let a = 0; a < 2; a++) for (let b = 0; b < 3; b++) {
+        const u = (a - .5) * .55, v = (b - 1) * .36;
+        bd.position.set(CX + (rot ? v : u) + (brnd() - .5) * .02, PAL + SACK_H * (ly + .5), BZ + (rot ? u : v) + (brnd() - .5) * .02);
+        bd.rotation.set((brnd() - .5) * .05, (rot ? Math.PI / 2 : 0) + (brnd() - .5) * .06, (brnd() - .5) * .05);
+        bd.scale.set(1, .9 + brnd() * .2, 1); bd.updateMatrix(); sackInst.setMatrixAt(k, bd.matrix);
+        sackInst.setColorAt(k++, col.copy(green).multiplyScalar(.8 + brnd() * .3));
+      }
+    }
+  }
+  const wrap = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xeef6ff, transparent: true, opacity: .14, roughness: .1, metalness: .2, depthWrite: false }));
+  scene.add(wrap);
+  function setSacks(layers) {
+    sackInst.count = layers * 6; wrap.visible = layers > 0;
+    const h = layers * SACK_H + .02; wrap.scale.set(1.14, h, 1.1); wrap.position.set(CX, PAL + h / 2, BZ);
+  }
+  setSacks(LAYERS);
+
+  // Ferro Silicon: jumbo bag (FIBC) menggembung di atas pallet, sabuk, tali angkat, tulisan stensil
+  pallet(FX, BZ, 1.1, 1.1);
+  const bagG = new THREE.Group(); bagG.position.set(FX, PAL, BZ); scene.add(bagG);
+  const prof = [[0, 0], [.46, 0], [.5, .06], [.53, .3], [.53, .55], [.51, .78], [.47, .86], [.36, .9], [.18, .93], [0, .94]].map(([x, y]) => new THREE.Vector2(x, y));
+  const bagGeo = new THREE.LatheGeometry(prof, 48);
+  { // kerutan kain
+    const pos = bagGeo.attributes.position, v = new THREE.Vector3();
+    for (let k = 0; k < pos.count; k++) {
+      v.fromBufferAttribute(pos, k);
+      if (Math.hypot(v.x, v.z) < .01) continue;
+      const a = Math.atan2(v.z, v.x);
+      const n = 1 + .018 * Math.sin(a * 9 + v.y * 14) + .012 * Math.sin(a * 23 - v.y * 31) + (v.y > .82 ? .05 * Math.sin(a * 6) : 0);
+      pos.setXYZ(k, v.x * n, v.y + (v.y > .86 ? .03 * Math.sin(a * 5 + 1) : 0), v.z * n);
+    }
+    bagGeo.computeVertexNormals();
+  }
+  const bag = new THREE.Mesh(bagGeo, new THREE.MeshStandardMaterial({ color: 0xc4c8c4, roughness: .92 }));
+  bag.castShadow = bag.receiveShadow = true; bagG.add(bag);
+  const strapMat = new THREE.MeshStandardMaterial({ color: 0xb9bcb6, roughness: .95 });
+  const belt = new THREE.Mesh(new THREE.TorusGeometry(.538, .014, 6, 64), strapMat); belt.rotation.x = Math.PI / 2; belt.position.y = .3; bagG.add(belt);
+  for (const a of [.55, -.55, Math.PI - .55, Math.PI + .55]) {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(.055, .84, .012), strapMat);
+    st.position.set(Math.sin(a) * .54, .44, Math.cos(a) * .54); st.rotation.y = a; bagG.add(st);
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(.11, .018, 6, 18, Math.PI), strapMat);
+    loop.position.set(Math.sin(a) * .36, .9, Math.cos(a) * .36); loop.rotation.set(-Math.PI / 2 + .35, a, 0); bagG.add(loop);
+  }
+  const stencil = canvasTex(1024, 640, g => {
+    g.fillStyle = 'rgba(25,25,25,.85)'; g.font = 'bold 74px Arial, sans-serif'; g.textAlign = 'left';
+    ['YUSHIN', 'SURABAYA', 'B/NO. 136-152', 'FERRO SILICON', 'LOT NUMBER :'].forEach((t, k) => g.fillText(t, 110, 110 + k * 112, 820));
+  });
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(.545, .545, .5, 24, 1, true, -.75, 1.5), new THREE.MeshStandardMaterial({ map: stencil, transparent: true, roughness: .9, depthWrite: false }));
+  label.position.y = .58; bagG.add(label);
+
   // foto material
   const loader = new THREE.TextureLoader();
   function photo(src, x, y, z, size, ry = 0) {
@@ -254,7 +333,16 @@ function buildScene(view, onPick) {
     const el = document.createElement('div');
     const o = new CSS2DObject(el); o.position.set(cx(i), TOP + .02, BZ1 + .01); scene.add(o); tags.push(el);
   });
-  const fitBox = (b, i, pad) => { const v = vols[i]; b.position.copy(v.position); b.scale.set(W + pad, TOP - DECK + pad, v.geometry.parameters.depth + pad); b.visible = true; };
+  BULK.forEach((b, j) => {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.1, 1.2), new THREE.MeshBasicMaterial({ visible: false }));
+    v.position.set(b.x, .55, BZ); v.userData.idx = COMP.length + j; scene.add(v); vols.push(v);
+    const el = document.createElement('div');
+    const o = new CSS2DObject(el); o.position.set(b.x, 1.15, BZ); scene.add(o); tags.push(el);
+  });
+  const fitBox = (b, i, pad) => {
+    const v = vols[i], { width, height, depth } = v.geometry.parameters;
+    b.position.copy(v.position); b.scale.set(width + pad, height + pad, depth + pad); b.visible = true;
+  };
 
   // kamera
   const CAMS = {
@@ -264,7 +352,7 @@ function buildScene(view, onPick) {
     top: [[0, 4.7, .3], [0, .9, -.05]],
   };
   const fit = ([p, t]) => {
-    const k = Math.max(1, 1.75 / camera.aspect) * 1.12;
+    const k = Math.max(1, 1.75 / camera.aspect) * 1.3; // meja + material curah di kiri-kanan
     return [new THREE.Vector3(...p).sub(new THREE.Vector3(...t)).multiplyScalar(k).add(new THREE.Vector3(...t)).toArray(), t];
   };
   let tween = null;
@@ -294,7 +382,8 @@ function buildScene(view, onPick) {
   function resize() {
     const w = view.clientWidth, h = view.clientHeight;
     renderer.setSize(w, h); labelR.setSize(w, h);
-    labelR.domElement.dataset.narrow = w < 900; // label sempit saling tumpuk: tampilkan yang dipilih saja camera.aspect = w / h; camera.updateProjectionMatrix();
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    labelR.domElement.dataset.narrow = w < 900; // label sempit saling tumpuk: tampilkan yang dipilih saja
   }
   const ro = new ResizeObserver(resize); ro.observe(view); resize();
   { const [p, t] = fit(CAMS.overview); camera.position.set(...p); controls.target.set(...t); }
@@ -315,7 +404,11 @@ function buildScene(view, onPick) {
   return {
     update(lvMap, showPlan) {
       fills.forEach(f => updateFill(f, lvMap[COMP[f.ci].material], showPlan));
-      COMP.forEach((c, i) => {
+      // material curah: tanpa data stok tampil penuh sebagai dekorasi
+      const lc = lvMap.Carbon, lf = lvMap['Ferro Silicon'];
+      setSacks(lc ? Math.ceil(frac(lc.solid, lc) * LAYERS) : LAYERS);
+      bagG.scale.y = lf ? Math.max(.12, frac(lf.solid, lf)) : 1;
+      ITEMS.forEach((c, i) => {
         const lv = lvMap[c.material];
         const on = i === selIdx;
         tags[i].className = [
@@ -329,7 +422,7 @@ function buildScene(view, onPick) {
       });
     },
     select(i) { selIdx = i; if (i >= 0) fitBox(selBox, i, .03); else selBox.visible = false; },
-    focusOn(i) { const x = cx(i); flyTo([x * .85, 3.0, 1.6], [x, .9, -.3]); },
+    focusOn(i) { const x = vols[i].position.x; flyTo([x * .85, 3.0, 1.6], [x, .9, -.3]); },
     cam(name) { flyTo(...fit(CAMS[name])); },
     setLids(on) { lidsOpen = on; },
     setTags(on) { labelR.domElement.style.display = on ? '' : 'none'; },
@@ -374,7 +467,7 @@ export default function MejaInokulasi3D({ lines, stokMinimum = {}, kapasitas = {
   const lv = levels(lines, stokMinimum, kapasitas, mode);
 
   useEffect(() => {
-    const api = buildScene(viewRef.current, i => setSel(COMP[i].material));
+    const api = buildScene(viewRef.current, i => setSel(ITEMS[i].material));
     apiRef.current = api;
     return () => { api.dispose(); apiRef.current = null; };
   }, []);
@@ -416,7 +509,7 @@ export default function MejaInokulasi3D({ lines, stokMinimum = {}, kapasitas = {
         {lines.map(l => {
           const v = lv[l.material];
           const ci = IDX[l.material];
-          const c = COMP[ci];
+          const c = ITEMS[ci];
           const on = sel === l.material;
           const pct = x => `${frac(x, v) * 100}%`;
           return (
