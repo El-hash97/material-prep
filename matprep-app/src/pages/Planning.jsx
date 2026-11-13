@@ -4,7 +4,8 @@ import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
 import { printBon } from '../lib/print';
-import StockTubes from '../components/StockTubes';
+import { lazy, Suspense } from 'react';
+const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
 export default function Planning() {
   const {
@@ -218,7 +219,7 @@ export default function Planning() {
         </section>
 
         {hasPrevSisa && (
-          <section className="tile md:col-span-5">
+          <section className="tile md:col-span-12">
             <div className="tile-head">
               <div>
                 <div className="tile-label">Sisa Stok Sebelumnya</div>
@@ -232,9 +233,9 @@ export default function Planning() {
               <p className="mb-3 text-[11px] leading-relaxed text-steel-faint">
                 Bon dikurangi otomatis agar material yang sudah cukup tidak dibon ulang.
               </p>
-              <div className="divide-y divide-white/[0.05]">
+              <div className="grid gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
                 {Object.entries(prevSisaMap).filter(([, v]) => v > 0).map(([mat, sisa]) => (
-                  <div key={mat} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                  <div key={mat} className="flex items-center justify-between gap-3 border-b border-white/[0.05] py-2">
                     <span className="truncate text-[13px] font-semibold text-paper">{mat}</span>
                     <span className="shrink-0 font-display text-lg font-semibold tabular-nums text-success">
                       {fmtNum(sisa)} <span className="text-[11px] font-medium text-steel-faint">kg</span>
@@ -246,18 +247,20 @@ export default function Planning() {
           </section>
         )}
 
-        <section className={`tile ${hasPrevSisa ? 'md:col-span-7' : 'md:col-span-12'}`}>
+        <section className="tile md:col-span-12">
           <div className="tile-head">
             <div>
-              <div className="tile-label">Visualisasi Stok</div>
+              <div className="tile-label">Visualisasi Stok · Meja Inokulasi 3D</div>
               <div className="mt-1.5 text-[11px] text-steel-faint">
-                Hijau = stok (kg). {hasBon ? 'Orange transparan = rencana bon, jadi hijau setelah bon disimpan.' : 'Tekan Hitung Bon untuk melihat rencana bon.'}
+                Isi kompartemen = stok (kg). {hasBon ? 'Orange transparan = rencana bon, jadi hijau setelah bon disimpan.' : 'Tekan Hitung Bon untuk melihat rencana bon.'}
               </div>
             </div>
             <span className="chip text-steel-dim">Batas minimum</span>
           </div>
           <div className="tile-body">
-            <StockTubes lines={tubeLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={tubeMode} />
+            <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+              <MejaInokulasi3D lines={tubeLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={tubeMode} />
+            </Suspense>
           </div>
         </section>
 

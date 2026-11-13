@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   Chart, BarElement, CategoryScale, LinearScale, ArcElement,
   Tooltip, Legend, BarController, DoughnutController,
@@ -12,6 +12,8 @@ import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { getAllMaterials, effBonFinal, formatDate, gentaniUsage, fmtNum } from '../lib/calc';
+
+const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
 Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend, BarController, DoughnutController, LineController, LineElement, PointElement, LogarithmicScale);
 
@@ -135,6 +137,15 @@ export default function Dashboard() {
   );
 
   const recent = shifts.slice(0, 5);
+
+  // stok di meja: shift terbuka = sisa + bon; tanpa shift terbuka = sisa akhir shift terakhir
+  const lastClosed = db.getLastClosed();
+  const stockLines = activeShift
+    ? activeShift.bonLines
+    : allMats.map(material => ({
+        material, totalTepat: 0, bonFinal: 0, bonFinalOverride: null,
+        sisaStok: (lastClosed?.bonLines ?? []).filter(l => l.material === material).reduce((a, l) => a + (l.sisaAkhir ?? 0), 0),
+      }));
 
   useEffect(() => {
     const allShifts = db.getShifts();
@@ -384,6 +395,20 @@ export default function Dashboard() {
       </div>
 
       <div className="bento">
+        <section className="tile md:col-span-12">
+          <TileHead
+            label="Stok Meja Inokulasi"
+            meta={activeShift
+              ? `Shift ${activeShift.shift} ${formatDate(activeShift.tanggal)} · sisa + bon`
+              : lastClosed ? `Sisa akhir shift ${lastClosed.shift} ${formatDate(lastClosed.tanggal)}` : 'Belum ada data stok'}
+          />
+          <div className="tile-body">
+            <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+              <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
+            </Suspense>
+          </div>
+        </section>
+
         <section className="tile md:col-span-8 md:row-span-2">
           <TileHead label="Pemakaian Material" meta={`${closedInPeriod.length} shift tertutup · skala log`}>
             <div className="text-right">
