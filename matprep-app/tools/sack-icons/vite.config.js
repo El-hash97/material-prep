@@ -1,4 +1,4 @@
-// Render ulang ikon karung (mis. setelah foto baru ditaruh di textures/ dan didaftarkan di main.js):
+// Render ulang ikon karung (mis. setelah foto baru ditaruh di src/assets/sacks dan didaftarkan di src/lib/sack3d.js):
 //   cd matprep-app && npx vite tools/sack-icons --config tools/sack-icons/vite.config.js
 // lalu buka http://localhost:5198 — ikon tersimpan otomatis ke src/assets/material-icons/.
 import { defineConfig } from 'vite';
@@ -18,9 +18,13 @@ export default defineConfig({
         const chunks = [];
         req.on('data', c => chunks.push(c));
         req.on('end', () => {
-          mkdirSync(outDir, { recursive: true });
-          writeFileSync(`${outDir}${name}.webp`, Buffer.concat(chunks));
-          res.end('ok');
+          try {
+            mkdirSync(outDir, { recursive: true });
+            writeFileSync(`${outDir}${name}.webp`, Buffer.concat(chunks));
+            res.end('ok');
+          } catch (e) { // mis. file dikunci Windows saat halaman reload — laporkan, jangan matikan server
+            res.statusCode = 500; res.end(String(e.code ?? e));
+          }
         });
       });
     },

@@ -520,7 +520,7 @@ export default function MejaInokulasi3D({ lines, stokMinimum = {}, kapasitas = {
                 onClick={() => choose(l.material)}
                 className={`flex w-full items-start gap-2.5 rounded-[4px] border p-2 text-left transition-colors ${on ? 'border-signal/60 bg-iron-800' : 'border-transparent hover:bg-white/[0.04]'}`}
               >
-                <MaterialIcon material={l.material} fallback={c && img(c.id)} className="h-10 w-10 rounded-[3px]" />
+                <MaterialIcon material={l.material} fallback={c && img(c.id)} viewable={false} className="h-10 w-10 rounded-[3px]" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-[12px] font-semibold text-paper">{l.material}</span>
