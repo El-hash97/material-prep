@@ -4,3 +4,5 @@
 # Local secrets
 .env
 .env.*
+.vercel
+.env*
