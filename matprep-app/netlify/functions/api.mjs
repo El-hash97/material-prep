@@ -1,14 +1,15 @@
 import { neon } from '@neondatabase/serverless';
 
-// Satu-satunya tempat yang bicara ke Neon. DATABASE_URL hanya ada di env Netlify.
+// Satu-satunya tempat yang bicara ke Neon. DATABASE_URL hanya ada di env Netlify / Vercel.
+// Dipakai Netlify (default export di bawah) dan Vercel (api/index.js memanggil handle()).
 const sql = neon(process.env.DATABASE_URL);
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-export default async (req) => {
-  const parts = new URL(req.url).pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
-  const [res, id] = parts;
+// path: bagian setelah /api/, mis. 'data' atau 'shifts/<id>'
+export async function handle(req, path) {
+  const [res, id] = path.split('/').filter(Boolean);
   const body = ['POST', 'PUT', 'PATCH'].includes(req.method) ? await req.json().catch(() => null) : null;
 
   try {
@@ -58,6 +59,8 @@ export default async (req) => {
     console.error(e);
     return json({ error: 'database error' }, 500);
   }
-};
+}
+
+export default req => handle(req, new URL(req.url).pathname.replace(/^\/api\/?/, ''));
 
 export const config = { path: '/api/*' };
