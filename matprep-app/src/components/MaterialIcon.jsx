@@ -1,19 +1,22 @@
 import { lazy, Suspense, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-// Ikon karung 3D per material (dirender dari src/lib/sack3d.js oleh tools/sack-icons).
+// Ikon identitas meja per material — foto label bin yang diproses jadi tampilan seperti scan.
 const ICONS = import.meta.glob('../assets/material-icons/*.webp', { eager: true, import: 'default' });
 const icon = id => ICONS[`../assets/material-icons/${id}.webp`];
 const SackViewer3D = lazy(() => import('./SackViewer3D'));
 
-// nama material di Pengaturan → id karung. Material tanpa foto memakai karung polos.
+// nama material di Pengaturan → id ikon identitas meja
 const BY_MATERIAL = {
   'LMC': 'lmc',
-  'Inocarb': 'lmc', // karung sama dengan LMC
+  'Inocarb': 'inocarb',
   'Ultraseed CE Inoculant': 'ultraseed',
   'Mg Lamet': 'mglamet',
   'Cu': 'cu',
   'Mg Denodule': 'mgdenodule',
+  'Antimon (Sb)': 'antimon',
+  'Sn': 'sn',
+  'Superseed': 'superseed',
 };
 
 // fallback: gambar lain bila belum ada foto karung (mis. foto isi kompartemen).
