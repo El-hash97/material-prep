@@ -14,12 +14,26 @@ const usageOf = s => s.bonLines.reduce((a, l) => a + (l.pemakaianAktual ?? 0), 0
 export const deltaPct = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
 
 const SEVERITY = { crit: 0, warn: 1, ok: 2, unset: 3 };
-const COVER_DAYS = 7; // jendela rata-rata pemakaian untuk "cukup untuk N hari"
 
 // Stok per material: shift Open = sisa + bon − pemakaian setengah shift (stok di meja sekarang); tanpa shift Open = sisa akhir shift
 // Closed terakhir. Status & "cukup untuk" dari stok sekarang. Proyeksi akhir shift (stok − kebutuhan tepat)
 // hanya informasi: bon dihitung pas kebutuhan, jadi proyeksi hampir selalu di bawah minimum.
-export function stockRows(shifts, settings, today) {
+// "Cukup untuk" = stok sekarang ÷ kebutuhan material per lot besar (kgPerLot, mix plan shift aktif/terakhir).
+
+// Kebutuhan material untuk 1 lot besar (kg). Material dipakai beberapa produk dengan takaran berbeda,
+// jadi ditimbang dengan mix lot besar plan; tanpa plan (mix 0) → rata-rata biasa produk pemakainya.
+// null bila tidak ada produk yang memakai material ini.
+export function kgPerLot(material, settings, mix = {}) {
+  const uses = PRODUCTS.map(p => [p, settings.materials?.[p]?.[material] ?? 0]).filter(([, kg]) => kg > 0);
+  if (!uses.length) return null;
+  const w = uses.map(([p]) => mix[p] ?? 0);
+  const W = w.reduce((a, x) => a + x, 0);
+  return W > 0
+    ? uses.reduce((a, [, kg], i) => a + kg * w[i], 0) / W
+    : uses.reduce((a, [, kg]) => a + kg, 0) / uses.length;
+}
+
+export function stockRows(shifts, settings) {
   const mats = getAllMaterials(settings);
   const open = shifts.find(s => s.status === 'Open');
   const lastClosed = shifts.find(s => s.status === 'Closed');
@@ -27,9 +41,8 @@ export function stockRows(shifts, settings, today) {
   const sisaClosed = m => (lastClosed?.bonLines ?? [])
     .filter(l => l.material === m).reduce((a, l) => a + (l.sisaAkhir ?? 0), 0);
 
-  // rata-rata pemakaian per hari kerja (hari yang punya pemakaian aktual) dalam COVER_DAYS terakhir
-  const from = addDays(today, -(COVER_DAYS - 1));
-  const recent = shifts.filter(s => s.status === 'Closed' && inRange(s, from, today));
+  const mix = (open ?? shifts[0])?.lotBesarMap ?? {};
+  const planned = PRODUCTS.some(p => (mix[p] ?? 0) > 0);
 
   const rows = mats.map(material => {
     const line = lineOf(material);
@@ -40,18 +53,14 @@ export function stockRows(shifts, settings, today) {
     const stok = line ? Math.max(0, line.sisaStok + effBonFinal(line) - (dicatat ? tengah : 0)) : sisaClosed(material);
     const akhir = line ? stok - (dicatat ? tengah : line.totalTepat) : stok;
     const min = settings.stokMinimum?.[material] ?? 0;
-    const days = new Set();
-    let used = 0;
-    for (const s of recent) {
-      const l = s.bonLines.find(x => x.material === material);
-      if (l?.pemakaianAktual > 0) { used += l.pemakaianAktual; days.add(s.tanggal); }
-    }
-    const perDay = days.size ? used / days.size : 0;
+    const perLot = kgPerLot(material, settings, mix);
     const status = min <= 0 ? 'unset' : stok < min ? 'crit' : stok < 1.5 * min ? 'warn' : 'ok';
     return {
       material, stok, akhir, min, status,
       cap: settings.kapasitasTabung?.[material] || 3 * min || 0,
-      cover: perDay > 0 ? stok / perDay : null,
+      perLot,
+      coverBasis: planned ? 'mix plan' : 'rata-rata produk',
+      cover: perLot > 0 ? stok / perLot : null, // dalam lot besar
       projected: Boolean(line),
     };
   });
@@ -141,7 +150,7 @@ export function buildDashboard(shifts, settings, period, today) {
     return { date, red, white, total: red + white };
   });
 
-  const stock = stockRows(shifts, settings, today);
+  const stock = stockRows(shifts, settings);
   const attention = [
     ...stock.filter(r => r.status === 'crit').map(r => ({ level: 'crit', text: `${r.material} di bawah minimum` })),
     ...gActive.filter(r => r.status === 'over').map(r => ({ level: 'crit', text: `Gentani ${r.material} ${Math.round(r.pct)}%` })),

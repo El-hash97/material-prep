@@ -25,6 +25,8 @@ Chart.defaults.font.family = 'Plus Jakarta Sans, sans-serif';
 
 const C = { paper: '#ECE9E2', steel: '#B3BBBE', dim: '#959EA2', faint: '#808A8E', raised: '#1B2125', grid: 'rgba(255,255,255,0.06)' }; // = token tailwind
 const fmt1 = n => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+// Lot dibulatkan ke bawah (0,1) agar stok tidak dilebih-lebihkan.
+const fmtLot = n => fmt1(Math.floor(n * 10) / 10);
 const pctOf = (v, max) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 const REDUCED = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const stagger = i => ({ '--i': i });
@@ -161,7 +163,9 @@ function StockRow({ r, i }) {
       </div>
       <div className="readout hidden text-right text-[13px] sm:block">{fmtNum(r.stok)}<span className="ml-0.5 text-[10px] font-medium text-steel-faint">kg</span></div>
       <div className="col-start-3 row-start-1 text-right sm:col-start-auto sm:row-start-auto">
-        <div className="readout text-[13px]">{r.cover === null ? '—' : `${fmt1(r.cover)} hari`}</div>
+        <div className="readout text-[13px]" title={r.perLot ? `1 lot besar ≈ ${fmt1(r.perLot)} kg (${r.coverBasis})` : 'Material tidak dipakai produk mana pun'}>
+          {r.cover === null ? '—' : `${fmtLot(r.cover)} lot`}
+        </div>
         <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-steel-dim">
           <st.Icon size={11} className={st.icon} />{st.label}
         </div>

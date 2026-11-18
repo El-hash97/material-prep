@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', optimizeDeps: { noDiscovery: true } });
-const { buildDashboard, addDays, deltaPct, planSummary, bonToday } = await vite.ssrLoadModule('/src/lib/dashboard.js');
+const { buildDashboard, addDays, deltaPct, planSummary, bonToday, kgPerLot } = await vite.ssrLoadModule('/src/lib/dashboard.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
 const { karungOf, karungKeMinimum, tengahShift } = await vite.ssrLoadModule('/src/lib/calc.js');
 
@@ -56,9 +56,14 @@ const d = buildDashboard(shifts, settings, 7, today);
 // Urutan status: crit (Sn 6 < 10) → warn (LMC 120 < 150, Cu 14 < 15) → unset; dalam status: rasio stok/min terkecil dulu.
 assert.deepEqual(d.stock.slice(0, 3).map(r => [r.material, r.status]), [['Sn', 'crit'], ['LMC', 'warn'], ['Cu', 'warn']]);
 assert.ok(d.stock.slice(3).every(r => r.status === 'unset'));
-// Hari cukup = stok / rata-rata per hari kerja: LMC (50 + 30 + 20) kg dalam 2 hari = 50 kg/hari → 120/50.
-assert.equal(d.stock.find(r => r.material === 'LMC').cover, 2.4);
-assert.equal(d.stock.find(r => r.material === 'Cu').cover, null); // belum ada pemakaian
+// Cukup untuk N lot besar = stok / kebutuhan per lot besar (mix plan shift terakhir: hanya 2TR).
+// LMC: 2TR 100 kg/lot → 120 / 100 = 1,2 lot. Cu tidak dipakai 2TR → rata-rata KAI 4 & CRANK 4 = 4 → 14 / 4 = 3,5.
+assert.equal(d.stock.find(r => r.material === 'LMC').cover, 1.2);
+assert.equal(d.stock.find(r => r.material === 'LMC').coverBasis, 'mix plan');
+assert.equal(d.stock.find(r => r.material === 'Cu').cover, 3.5);
+assert.equal(kgPerLot('LMC', settings, { '2TR': 3, '1TR': 1 }), 95);   // (100×3 + 80×1) / 4
+assert.equal(kgPerLot('LMC', settings, {}), 90);                       // tanpa plan: (100 + 80) / 2
+assert.equal(kgPerLot('Tidak ada', settings, { '2TR': 1 }), null);
 assert.equal(d.stock.find(r => r.material === 'LMC').cap, 1000);
 
 // KPI + delta vs 7 hari sebelumnya.
@@ -78,7 +83,7 @@ const lmc = buildDashboard([open, ...shifts], settings, 7, today).stock.find(r =
 assert.equal(lmc.stok, 220);
 assert.equal(lmc.akhir, 70);
 assert.equal(lmc.status, 'ok');
-assert.equal(lmc.cover, 4.4); // 220 / 50 kg per hari
+assert.equal(lmc.cover, 220 / 90); // shift Open tanpa lot besar → rata-rata LMC 90 kg/lot
 
 // Pemakaian setengah shift mengurangi stok di meja: 220 − 80 = 140; paruh kedua dengan laju sama → akhir 140 − 80 = 60.
 const openTengah = { ...open, pemakaianTengah: { LMC: 80 } };
