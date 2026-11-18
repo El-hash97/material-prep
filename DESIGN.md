@@ -74,7 +74,7 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 ## Layout
 
 - `.bento`: 1 kolom di mobile, 12 kolom di `md`.
-- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → rencana produksi 12 (lot kecil → lot besar → pcs per produk, total bon kg/karung, progres ½ shift) → stok material 8 + alur shift 4 (animasi loop; "Buka 3D interaktif" menggantinya dengan meja 3D 12 kolom) → gentani 7 + tren harian 5 → pengebonan hari ini 5 (bar per material dengan foto karung, dipecah per bon, toggle kg/karung, riwayat bon di bawah) + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
+- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → rencana produksi 12 (lot kecil → lot besar → pcs per produk, total bon kg/karung, progres ½ shift) → stok material 8 + alur shift 4 (animasi loop; "Buka 3D interaktif" menggantinya dengan meja 3D 12 kolom) → gentani 7 + tren harian 5 → pengebonan hari ini 5 (toggle shift Red/White; bar kg per material dengan foto karung, kg + karung, ringkasan bon shift itu di bawah) + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
 - Planning: pemakaian ½ shift 12 (hanya saat ada shift Open); info shift 4, input lot 8; sisa stok 5, visualisasi 7; tabel bon 12 dengan kolom Saran Bon (kg + karung) dan Bon Final (−/+ per karung, input kg, selisih vs saran, tombol ke saran, saran "+N karung agar ≥ min").
 - Riwayat: filter 8, ringkasan 4; setiap bon 12.
 - Pengaturan: rasio 5, ringkasan 7; kebutuhan material 12; ukuran karung 6, stok minimum 6; gentani 12.
