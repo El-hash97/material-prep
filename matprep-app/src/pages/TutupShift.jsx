@@ -199,6 +199,11 @@ export default function TutupShift() {
                               onChange={e => onPemakaianChange(idx, e.target.value)}
                             />
                           )}
+                          {bon.pemakaianTengah?.[l.material] !== undefined && (
+                            <div className="mt-1 text-[10px] tabular-nums text-steel-faint">
+                              ½ shift: {fmtNum(bon.pemakaianTengah[l.material])} kg
+                            </div>
+                          )}
                         </td>
                         <td className="num-cell px-3 py-2.5 tabular-nums">
                           {sisa !== null ? (

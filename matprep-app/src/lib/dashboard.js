@@ -16,7 +16,7 @@ export const deltaPct = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 :
 const SEVERITY = { crit: 0, warn: 1, ok: 2, unset: 3 };
 const COVER_DAYS = 7; // jendela rata-rata pemakaian untuk "cukup untuk N hari"
 
-// Stok per material: shift Open = sisa + bon (stok di meja sekarang); tanpa shift Open = sisa akhir shift
+// Stok per material: shift Open = sisa + bon − pemakaian setengah shift (stok di meja sekarang); tanpa shift Open = sisa akhir shift
 // Closed terakhir. Status & "cukup untuk" dari stok sekarang. Proyeksi akhir shift (stok − kebutuhan tepat)
 // hanya informasi: bon dihitung pas kebutuhan, jadi proyeksi hampir selalu di bawah minimum.
 export function stockRows(shifts, settings, today) {
@@ -33,8 +33,12 @@ export function stockRows(shifts, settings, today) {
 
   const rows = mats.map(material => {
     const line = lineOf(material);
-    const stok = line ? line.sisaStok + effBonFinal(line) : sisaClosed(material);
-    const akhir = line ? stok - line.totalTepat : stok;
+    // Pemakaian setengah shift (bila dicatat) sudah keluar dari meja, dan paruh kedua diproyeksi
+    // dengan laju yang sama (sama dengan tengahShift di Buat Bon). Belum dicatat: sisa = kebutuhan rencana.
+    const tengah = open?.pemakaianTengah?.[material];
+    const dicatat = typeof tengah === 'number' && tengah >= 0;
+    const stok = line ? Math.max(0, line.sisaStok + effBonFinal(line) - (dicatat ? tengah : 0)) : sisaClosed(material);
+    const akhir = line ? stok - (dicatat ? tengah : line.totalTepat) : stok;
     const min = settings.stokMinimum?.[material] ?? 0;
     const days = new Set();
     let used = 0;

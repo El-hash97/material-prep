@@ -143,7 +143,9 @@ function StockRow({ r, i }) {
         <div className="truncate text-[11px] text-steel-faint">
           <span className="sm:hidden">{fmtNum(r.stok)} kg · </span>
           {r.min > 0 ? `min ${fmtNum(r.min)} kg` : 'minimum belum diatur'}
-          {r.projected && ` · akhir shift ≈ ${fmtNum(Math.round(r.akhir))} kg`}
+          {r.projected && (r.akhir < 0
+            ? <span className="font-semibold text-danger"> · akhir shift kurang ±{fmtNum(Math.round(-r.akhir))} kg</span>
+            : ` · akhir shift ≈ ${fmtNum(Math.round(r.akhir))} kg`)}
         </div>
       </div>
       <div

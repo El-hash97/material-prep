@@ -144,3 +144,19 @@ export function karungKeMinimum(line, min) {
   const sisaSetelah = (line.sisaStok ?? 0) + effBonFinal(line) - line.totalTepat;
   return karungOf(min - sisaSetelah, line.ukuranKarung);
 }
+
+// Pemakaian setengah shift (shift.pemakaianTengah[material] = kg terpakai sampai tengah shift).
+// stokSekarang = tersedia − terpakai; proyeksi 1 shift = terpakai × 2.
+// status: 'habis' bila proyeksi melebihi stok tersedia (perlu bon susulan sebelum akhir shift),
+//         'diatas' bila proyeksi melebihi rencana (totalTepat) tapi stok masih cukup, 'ok' selain itu,
+//         null bila belum diisi.
+export function tengahShift(line, kg) {
+  const tersedia = (line.sisaStok ?? 0) + effBonFinal(line);
+  if (kg === null || kg === undefined || kg === '' || isNaN(Number(kg))) {
+    return { tersedia, stokSekarang: tersedia, proyeksi: null, kurang: 0, status: null };
+  }
+  const pakai = Number(kg);
+  const proyeksi = pakai * 2;
+  const status = proyeksi > tersedia ? 'habis' : proyeksi > line.totalTepat ? 'diatas' : 'ok';
+  return { tersedia, stokSekarang: Math.max(0, tersedia - pakai), proyeksi, kurang: Math.max(0, proyeksi - tersedia), status };
+}

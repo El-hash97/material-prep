@@ -5,7 +5,15 @@ import { createServer } from 'vite';
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', optimizeDeps: { noDiscovery: true } });
 const { buildDashboard, addDays, deltaPct } = await vite.ssrLoadModule('/src/lib/dashboard.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
-const { karungOf, karungKeMinimum } = await vite.ssrLoadModule('/src/lib/calc.js');
+const { karungOf, karungKeMinimum, tengahShift } = await vite.ssrLoadModule('/src/lib/calc.js');
+
+// Pemakaian setengah shift: tersedia = sisa 20 + bon 100 = 120, rencana 100
+const tl = { sisaStok: 20, bonFinal: 100, bonFinalOverride: null, totalTepat: 100 };
+assert.deepEqual(tengahShift(tl, null), { tersedia: 120, stokSekarang: 120, proyeksi: null, kurang: 0, status: null });
+assert.equal(tengahShift(tl, 40).status, 'ok');          // proyeksi 80 ≤ rencana
+assert.equal(tengahShift(tl, 55).status, 'diatas');      // proyeksi 110 > rencana, ≤ 120
+assert.deepEqual(tengahShift(tl, 70), { tersedia: 120, stokSekarang: 50, proyeksi: 140, kurang: 20, status: 'habis' });
+assert.equal(tengahShift(tl, 200).stokSekarang, 0);
 
 // Saran bon per karung
 assert.equal(karungOf(0, 25), 0);
@@ -71,6 +79,12 @@ assert.equal(lmc.stok, 220);
 assert.equal(lmc.akhir, 70);
 assert.equal(lmc.status, 'ok');
 assert.equal(lmc.cover, 4.4); // 220 / 50 kg per hari
+
+// Pemakaian setengah shift mengurangi stok di meja: 220 − 80 = 140; paruh kedua dengan laju sama → akhir 140 − 80 = 60.
+const openTengah = { ...open, pemakaianTengah: { LMC: 80 } };
+const lmcT = buildDashboard([openTengah, ...shifts], settings, 7, today).stock.find(r => r.material === 'LMC');
+assert.equal(lmcT.stok, 140);
+assert.equal(lmcT.akhir, 60);
 
 await vite.close();
 console.log('dashboard.check: ok');

@@ -6,6 +6,7 @@ import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, form
 import { printBon } from '../lib/print';
 import MaterialIcon from '../components/MaterialIcon';
 import { lazy, Suspense, useState } from 'react';
+import PemakaianTengah from '../components/PemakaianTengah';
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
 // Input kg bon final: draf lokal agar operator bisa mengosongkan lalu mengetik ulang tanpa lompat ke 0.
@@ -136,6 +137,8 @@ export default function Planning() {
       )}
 
       <div className="bento">
+        {openShift && <PemakaianTengah key={openShift.id} shift={openShift} />}
+
         <section className="tile md:col-span-4">
           <div className="tile-head">
             <div>
