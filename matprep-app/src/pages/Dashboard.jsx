@@ -5,14 +5,16 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import {
-  Plus, ArrowRight, ChevronRight, ChevronDown, ChevronUp, Database, Box,
-  TriangleAlert, CircleAlert, CircleCheck, CircleDashed, Timer,
+  Plus, ArrowRight, ChevronRight, ChevronDown, ChevronUp, Database,
+  TriangleAlert, CircleAlert, CircleCheck, CircleDashed, Timer, Maximize2,
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
 import { formatDate, fmtNum, todayStr } from '../lib/calc';
 import { buildDashboard } from '../lib/dashboard';
+import { buildStory } from '../lib/story';
+import StoryLoop from '../components/StoryLoop';
 import MaterialIcon from '../components/MaterialIcon';
 
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
@@ -336,6 +338,7 @@ export default function Dashboard() {
   const periodLabel = period === 1 ? 'kemarin' : `${period} hari sebelumnya`;
   const hasData = shifts.length > 0;
   const lastClosed = db.getLastClosed();
+  const story = buildStory(activeShift ?? shifts[0] ?? null, settings);
 
   // 3D: shift Open = sisa + bon (mode saved); tanpa shift Open = sisa akhir shift Closed terakhir
   const stockLines = activeShift
@@ -462,8 +465,13 @@ export default function Dashboard() {
           </section>
 
           <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-4'}`}>
-            <TileHead label="Meja inokulasi" meta="Tampilan 3D stok per kompartemen">
-              {show3d && <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(false)}>Tutup 3D</button>}
+            <TileHead
+              label={show3d ? 'Meja inokulasi' : 'Alur shift'}
+              meta={show3d ? '3D interaktif · stok per kompartemen' : 'Animasi berulang · data shift ini'}
+            >
+              {show3d
+                ? <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(false)}>Tutup 3D</button>
+                : <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(true)}><Maximize2 size={12} />Buka 3D interaktif</button>}
             </TileHead>
             <div className="tile-body">
               {show3d ? (
@@ -471,12 +479,7 @@ export default function Dashboard() {
                   <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
                 </Suspense>
               ) : (
-                <div className="well flex aspect-[4/3] flex-col items-center justify-center gap-2 text-center">
-                  <Box size={22} className="text-steel-dim" />
-                  <div className="font-display text-[13px] font-semibold text-steel">Meja Inokulasi 3D</div>
-                  <p className="max-w-[220px] text-[11px] leading-relaxed text-steel-faint">Model 3D baru dimuat saat dibuka supaya dashboard tetap cepat.</p>
-                  <button className="btn btn-outline btn-sm mt-1" onClick={() => setShow3d(true)}>Buka 3D</button>
-                </div>
+                <StoryLoop story={story} />
               )}
             </div>
           </section>

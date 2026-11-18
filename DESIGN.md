@@ -74,7 +74,7 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 ## Layout
 
 - `.bento`: 1 kolom di mobile, 12 kolom di `md`.
-- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → rencana produksi 12 (lot kecil → lot besar → pcs per produk, total bon kg/karung, progres ½ shift) → stok material 8 + meja 3D 4 (dimuat saat diklik) → gentani 7 + tren harian 5 → mix produksi 5 + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
+- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → rencana produksi 12 (lot kecil → lot besar → pcs per produk, total bon kg/karung, progres ½ shift) → stok material 8 + alur shift 4 (animasi loop; "Buka 3D interaktif" menggantinya dengan meja 3D 12 kolom) → gentani 7 + tren harian 5 → mix produksi 5 + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
 - Planning: pemakaian ½ shift 12 (hanya saat ada shift Open); info shift 4, input lot 8; sisa stok 5, visualisasi 7; tabel bon 12 dengan kolom Saran Bon (kg + karung) dan Bon Final (−/+ per karung, input kg, selisih vs saran, tombol ke saran, saran "+N karung agar ≥ min").
 - Riwayat: filter 8, ringkasan 4; setiap bon 12.
 - Pengaturan: rasio 5, ringkasan 7; kebutuhan material 12; ukuran karung 6, stok minimum 6; gentani 12.
@@ -98,7 +98,8 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 - Transisi 150ms untuk kontrol, 500-700ms ease-out untuk meter dan chart.
 - Tidak ada animasi masuk yang menghalangi; halaman langsung terbaca.
 - Animasi masuk data: bar/meter tumbuh dari kiri (`.anim-grow`, stagger 40ms via `--i`), sparkline tergambar (`.anim-draw`), angka KPI menghitung naik ±700ms, kolom tren Chart.js stagger hanya saat pertama tampil. Hanya transform/stroke; nilai akhir selalu ada di DOM.
-- `prefers-reduced-motion: reduce` mematikan semua animasi di atas (CSS + JS), termasuk transisi sidebar. Hindari animasi dekoratif.
+- Alur shift (`components/StoryLoop.jsx`, `lib/storyScene.js`, `lib/story.js`): Three.js low-poly, kamera ortografis isometrik yang pindah antar area dalam 0,8 detik, 9 babak, loop 36 detik. Pose = fungsi murni dari waktu t; teks dari lapisan HTML. Amber (emissive) menandai objek babak aktif. Meja fisik turun di babak 6, layar MatPrep baru turun di babak 8 setelah input aplikasi produksi. Babak 7–8 berlabel "Alur target" selama `INTEGRASI_AKTIF` = false. Data baru diterapkan di awal putaran. 30 fps, berhenti saat dijeda, di-hover, di luar layar, atau tab tersembunyi; DPR ≤ 1,5 (HP 1). WebGL gagal → storyboard HTML.
+- `prefers-reduced-motion: reduce` mematikan semua animasi di atas (CSS + JS), termasuk transisi sidebar; alur shift menjadi gambar diam per babak dengan tombol ◀ ▶. Hindari animasi dekoratif.
 
 ## Responsif
 
