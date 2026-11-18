@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- A: wadah persegi membulat; M dan P dipotong sebagai lubang, berbagi tiang tengah; lubang P = kompartemen persegi -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M64 16 H192 A48 48 0 0 1 240 64 V192 A48 48 0 0 1 192 240 H64 A48 48 0 0 1 16 192 V64 A48 48 0 0 1 64 16 Z
+    M48 68 H80 L108 120 L136 68 H168 V188 H140 V122 L118 162 H98 L76 122 V188 H48 Z
+    M168 68 H180 A42 42 0 0 1 180 152 H168 Z
+    M168 94 V126 H190 V94 Z" />
+</svg>

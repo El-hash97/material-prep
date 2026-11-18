@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>MatPrep: monogram MP</title>
+  <!-- A v2: M dan P berbagi tiang tengah; diagonal M tepat 60°; lubang P = kompartemen persegi; huruf terpusat di wadah -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M64 16 H192 A48 48 0 0 1 240 64 V192 A48 48 0 0 1 192 240 H64 A48 48 0 0 1 16 192 V64 A48 48 0 0 1 64 16 Z
+    M40 66 H66 L93 112.77 L120 66 H148 V186 H120 V111 L93 157.77 L66 111 V186 H40 Z
+    M148 66 H170 A46 46 0 0 1 170 158 H148 Z
+    M148 92 V132 H190 V92 Z" />
+</svg>

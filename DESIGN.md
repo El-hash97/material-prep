@@ -124,6 +124,8 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 
 ## Berkas Acuan
 
+- `docs/logo/README.md` — panduan logo (monogram MP), master di `docs/logo/kit/` dibuat oleh `build_kit.py`; aset aplikasi di `matprep-app/src/assets/brand/` dan `matprep-app/public/` (favicon, ikon web, manifest).
+
 - `matprep-app/src/index.css` — seluruh kelas sistem.
 - `matprep-app/tailwind.config.js` — token warna, font, animasi.
 - `matprep-app/src/constants/defaults.js` — produk dan warna produk.

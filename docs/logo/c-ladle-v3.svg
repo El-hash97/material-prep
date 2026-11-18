@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>MatPrep: P ladle</title>
+  <!-- C v3: sisi kanan mangkuk tepat 105° (miring 15°, seperti ladle); bibir tuang ke kiri; tiang meruncing jadi tetesan -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M40 52 H216 V64 L194.03 146 Q190.5 160 176 160 H88 V206 Q88 228 74 228 Q60 228 60 206 V72 Q60 64 52 62 L40 58 Z
+    M114 76 H192 L176.46 134 H120 Z" />
+</svg>

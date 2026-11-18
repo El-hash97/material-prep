@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
+import logo from '../assets/brand/matprep-symbol.svg';
 
 const NAV_ITEMS = [
   { key: 'dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
@@ -51,9 +52,7 @@ function SidebarContent({ mobile, page, hasOpen, collapsed, navigate, onToggle, 
   return (
     <>
       <div className="flex h-16 shrink-0 items-center gap-3 overflow-hidden border-b border-white/[0.07] px-4">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[3px] border border-signal/40 bg-signal/10 font-display text-[15px] font-bold tracking-wide text-signal">
-          MP
-        </span>
+        <img src={logo} alt="" width="36" height="36" className="h-9 w-9 shrink-0" />
         <div className="sb-fade min-w-0 flex-1">
           <div className="font-display text-[19px] font-semibold leading-none tracking-wide text-paper">MatPrep</div>
           <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-steel-faint">

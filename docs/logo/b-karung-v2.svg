@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>MatPrep: tumpukan karung</title>
+  <!-- B v2: tiga karung tidur ditumpuk 2+1 seperti di palet; tiap karung bantal cembung dengan sudut bertelinga -->
+  <path fill="#000" d="
+    M30 146 Q76 136 122 146 Q128 148 126 156 Q130 182 126 208 Q128 216 122 218 Q76 228 30 218 Q24 216 26 208 Q22 182 26 156 Q24 148 30 146 Z
+    M134 146 Q180 136 226 146 Q232 148 230 156 Q234 182 230 208 Q232 216 226 218 Q180 228 134 218 Q128 216 130 208 Q126 182 130 156 Q128 148 134 146 Z
+    M82 64 Q128 54 174 64 Q180 66 178 74 Q182 100 178 126 Q180 134 174 136 Q128 146 82 136 Q76 134 78 126 Q74 100 78 74 Q76 66 82 64 Z" />
+</svg>

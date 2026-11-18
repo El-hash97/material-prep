@@ -1,0 +1,36 @@
+{
+  "brand": "MatPrep",
+  "tagline": "Persiapan material Divisi Casting",
+  "brief": "Alat internal operator dan supervisor persiapan material di Divisi Casting PT TMMIN: menghitung bon, memantau stok dan gentani, serah terima shift. Logo harus presisi, industrial, tepercaya, dan terbaca di tab browser 16 px.",
+  "adjectives": ["presisi", "industrial", "tepercaya", "ringkas"],
+  "criteria": "Berhasil bila: menggantikan favicon Vite, terbaca di 16 px, tetap jalan satu warna, menjaga ekuitas MP + amber, tidak bisa ditiru dengan mengetik.",
+  "industry": "saas",
+  "mockups": ["website", "favicon-tab", "app-icon", "signage", "badge", "business-card"],
+  "nav": ["Dashboard", "Buat Bon", "Riwayat"],
+  "brand_color": "#F0A32A",
+  "greyscale": false,
+  "designer": "Claude untuk MatPrep",
+  "round": 2,
+  "concepts": [
+    {
+      "name": "Monogram MP",
+      "symbol": "kit/matprep-symbol-knockout.svg",
+      "lockup": "kit/matprep-horizontal-knockout.svg",
+      "symbol_on_tile": "kit/matprep-symbol.svg",
+      "lockup_on_dark": "kit/matprep-horizontal-on-dark.svg",
+      "tile_color": "#090B0C",
+      "idea": "M dan P berbagi satu tiang; lubang P adalah kompartemen meja material.",
+      "rationale": [
+        "Evolusi dari MP yang sudah dikenal operator: wadah persegi + amber tetap",
+        "Huruf dikonstruksi sendiri (diagonal 60°, tangkai seragam), bukan font stok",
+        "Versi kecil khusus 16–32 px; lolos satu warna dan latar gelap/terang"
+      ]
+    }
+  ],
+  "recommendation": "Monogram MP: paling kuat di ukuran kecil, menjaga ekuitas visual MatPrep, dan wordmark-nya memakai bahasa bentuk yang sama.",
+  "next_steps": [
+    "Pasang favicon & logo di aplikasi (sudah disiapkan)",
+    "Cek merek dagang secara profesional sebelum dipakai di luar internal",
+    "Turunkan pola/ikon dari kompartemen P bila dibutuhkan"
+  ]
+}

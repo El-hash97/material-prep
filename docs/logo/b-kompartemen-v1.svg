@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- B: meja material dari depan; tiga kompartemen, ruang kosong di atas tiap isi = level stok berbeda -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M56 24 H200 A32 32 0 0 1 232 56 V200 A32 32 0 0 1 200 232 H56 A32 32 0 0 1 24 200 V56 A32 32 0 0 1 56 24 Z
+    M48 48 H88 V124 A8 8 0 0 1 80 132 H56 A8 8 0 0 1 48 124 Z
+    M108 48 H148 V84 A8 8 0 0 1 140 92 H116 A8 8 0 0 1 108 84 Z
+    M168 48 H208 V156 A8 8 0 0 1 200 164 H176 A8 8 0 0 1 168 156 Z" />
+</svg>

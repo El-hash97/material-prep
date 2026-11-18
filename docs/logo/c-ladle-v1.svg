@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- C: huruf P; mangkuk = ladle melebar ke atas dengan bibir tuang ke kiri, tiang = aliran material yang dituang -->
+  <path fill="#000" fill-rule="evenodd" d="
+    M60 40 H216 L198 150 A14 14 0 0 1 184 162 H128 A14 14 0 0 1 114 150 L104 88 H100 V200 A28 28 0 0 1 72 228 H72 A12 12 0 0 1 60 216 Z
+    M128 70 H186 L176 132 H138 Z" />
+</svg>
