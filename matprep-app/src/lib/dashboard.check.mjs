@@ -107,5 +107,49 @@ assert.deepEqual(plan.tengah, { at: '2026-11-18T05:00:00.000Z', dicatat: 1, tota
 assert.equal(planSummary(null, settings), null);
 assert.equal(buildDashboard([planShift, ...shifts], settings, 7, today).plan.id, 'p1');
 
+// Animasi alur shift
+const { buildStory, beatAt, BEATS, LOOP, PALLET_MAX } = await vite.ssrLoadModule('/src/lib/story.js');
+assert.equal(BEATS.length, 9);
+assert.equal(LOOP, 36);
+assert.deepEqual(beatAt(0), { index: 0, local: 0 });
+assert.deepEqual(beatAt(1.5), { index: 0, local: 0.5 });
+assert.equal(beatAt(3).index, 1);
+assert.equal(beatAt(35.99).index, 8);
+assert.deepEqual(beatAt(36), { index: 0, local: 0 }); // berulang
+assert.equal(beatAt(-1).index, 8);
+
+const storySettings = { ...DEFAULT_SETTINGS, stokMinimum: { Inocarb: 100 } };
+const sOpen = {
+  shift: 'White', status: 'Open', lotKecilMap: { '2TR': 6 }, lotBesarMap: { '2TR': 2 },
+  bonLines: [
+    { material: 'LMC', sisaStok: 20, bonFinal: 200, bonFinalOverride: 250, ukuranKarung: 25, totalTepat: 200 },
+    { material: 'Inocarb', sisaStok: 0, bonFinal: 50, bonFinalOverride: null, ukuranKarung: 25, totalTepat: 30 },
+  ],
+  pemakaianTengah: { LMC: 120, Inocarb: 10 },
+};
+const st = buildStory(sOpen, storySettings);
+assert.equal(st.contoh, false);
+assert.equal(st.scene.karung, 12);                       // 250/25 + 50/25
+assert.equal(st.scene.palletSacks, Math.min(PALLET_MAX, 12));
+assert.equal(st.scene.shiftTo, 'Red');
+assert.deepEqual(st.beats[2].lines, ['Bon 300 kg · 12 karung · 2 material', '+2 karung disesuaikan operator']);
+assert.equal(st.beats[0].lines[1], '2 lot besar · 90 pcs');
+assert.deepEqual(st.beats[6].lines, ['LMC 120 kg · Inocarb 10 kg', 'Dari pemakaian ½ shift tercatat']);
+assert.equal(st.beats[7].lines[0], 'Stok di meja 320 kg → 190 kg');
+assert.equal(st.beats[8].lines[0], 'Shift White · proyeksi sisa 90 kg'); // (270−200) + (50−30)
+assert.ok(st.beats[6].target && st.beats[7].target && !st.beats[0].target);
+const lmcBar = st.scene.bars.find(b => b.material === 'LMC');
+assert.ok(lmcBar.before < lmcBar.full && lmcBar.after < lmcBar.full);
+assert.equal(st.scene.bars.find(b => b.material === 'Inocarb').low, true); // 40 < min 100
+
+// Tanpa ½ shift: contoh 1 lot besar produk aktif pertama; tanpa shift: data contoh.
+const st2 = buildStory({ ...sOpen, pemakaianTengah: undefined }, storySettings);
+assert.equal(st2.beats[6].lines[1], 'Contoh: 1 lot besar 2TR');
+const st3 = buildStory(null, DEFAULT_SETTINGS);
+assert.equal(st3.contoh, true);
+assert.ok(st3.scene.karung > 0 && st3.beats.every(b => b.lines.length > 0));
+assert.equal(buildStory({ ...sOpen, status: 'Closed', bonLines: sOpen.bonLines.map(l => ({ ...l, sisaAkhir: 5 })) }, storySettings).beats[8].lines[1],
+  'Sisa 10 kg diteruskan ke shift berikutnya');
+
 await vite.close();
 console.log('dashboard.check: ok');
