@@ -75,7 +75,8 @@ Warna produk (kategorikal, tervalidasi CVD di `#111518`, urutan tetap): 2TR `#39
 
 - Transisi 150ms untuk kontrol, 500-700ms ease-out untuk meter dan chart.
 - Tidak ada animasi masuk yang menghalangi; halaman langsung terbaca.
-- `prefers-reduced-motion` belum ditangani khusus; hindari animasi dekoratif.
+- Animasi masuk data: bar/meter tumbuh dari kiri (`.anim-grow`, stagger 40ms via `--i`), sparkline tergambar (`.anim-draw`), angka KPI menghitung naik ±700ms, kolom tren Chart.js stagger hanya saat pertama tampil. Hanya transform/stroke; nilai akhir selalu ada di DOM.
+- `prefers-reduced-motion: reduce` mematikan semua animasi di atas (CSS + JS). Hindari animasi dekoratif.
 
 ## Responsif
 

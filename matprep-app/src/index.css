@@ -224,3 +224,23 @@
   body { background: #fff !important; color: #111 !important; }
 }
 #print-area { display: none; }
+
+/* Gerak data: meter & grafik tumbuh sekali saat tampil (600–700ms ease-out), stagger lewat --i.
+   Hanya transform/stroke-dashoffset (GPU, tanpa layout shift). Nilai akhir selalu ada di DOM. */
+.anim-grow {
+  transform-origin: left center;
+  animation: matprep-grow-x 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.anim-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: matprep-draw 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms forwards;
+}
+@keyframes matprep-grow-x { from { transform: scaleX(0); } }
+@keyframes matprep-draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-grow, .anim-draw { animation: none; stroke-dashoffset: 0; }
+  .transition-\[width\], .meter-fill { transition: none !important; }
+}
