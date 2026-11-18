@@ -1,0 +1,495 @@
+<title>MatPrep Dashboard v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: blueprint sheet — diagnosis, live mock of the new dashboard, then viz spec and build order. Dark-only, the app's own "iron" world (DESIGN.md). */
+:root {
+  color-scheme: dark;
+  --iron-950: #090B0C; --iron-900: #0D1012; --iron-850: #111518; --iron-800: #161B1E; --iron-750: #1B2125; --iron-700: #22292D;
+  --line: rgba(255,255,255,.08); --line-soft: rgba(255,255,255,.06); --line-strong: rgba(255,255,255,.14);
+  --paper: #ECE9E2; --steel: #A7B0B3; --steel-dim: #7C8588; --steel-faint: #5A6366;
+  --signal: #F0A32A;
+  /* status — reserved, never reused for series */
+  --ok: #4DBE8A; --warn: #F0A32A; --crit: #E2574C;
+  /* product categorical — validated on #111518, adjacent order 2TR→1TR→KAI→CRANK */
+  --p-2tr: #3987e5; --p-1tr: #d55181; --p-kai: #9085e9; --p-crank: #199e70;
+  --font-display: "Space Grotesk", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: "Plus Jakarta Sans", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--iron-950); color: var(--steel); font: 14px/1.6 var(--font-body); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 48px 96px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 72px; }
+h1, h2, h3 { font-family: var(--font-display); color: var(--paper); text-wrap: balance; margin: 0; font-weight: 600; }
+h1 { font-size: clamp(28px, 4.6vw, 44px); line-height: 1.08; letter-spacing: -.01em; }
+h2 { font-size: 24px; line-height: 1.2; }
+h3 { font-size: 15px; }
+p { margin: 0; max-width: 68ch; }
+b { color: var(--paper); font-weight: 600; }
+.eyebrow { font: 600 10px/1 var(--font-display); text-transform: uppercase; letter-spacing: .2em; color: var(--steel-dim); }
+section { display: grid; gap: 24px; min-width: 0; }
+.sec-head { display: grid; gap: 10px; }
+code { font: 12px/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; color: var(--paper); background: var(--iron-800); padding: 1px 6px; border-radius: 3px; }
+
+.hero { display: grid; gap: 18px; border-bottom: 1px solid var(--line); padding-bottom: 40px; }
+.hero p { font-size: 16px; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12px; color: var(--steel-dim); }
+
+.diag { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; background: var(--iron-900); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.diag > div { background: var(--iron-900); outline: 1px solid var(--line); padding: 18px 20px; display: grid; gap: 6px; align-content: start; }
+.diag .was { font-size: 12px; color: var(--steel-dim); }
+.diag .now { font-size: 13px; color: var(--paper); }
+.tag { font: 600 10px/1 var(--font-display); letter-spacing: .12em; text-transform: uppercase; color: var(--crit); }
+
+/* ===== mock ===== */
+.frame { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--iron-950); overflow: hidden; }
+.frame-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--steel-faint); background: var(--iron-900); }
+.frame-bar .dots { display: flex; gap: 6px; }
+.frame-bar .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--iron-700); }
+.sample { font: 600 10px/1 var(--font-display); letter-spacing: .14em; text-transform: uppercase; border: 1px dashed var(--line-strong); padding: 4px 8px; border-radius: 3px; color: var(--steel-dim); }
+.app { display: grid; grid-template-columns: 56px 1fr; }
+.rail { border-right: 1px solid var(--line); background: var(--iron-900); display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 14px 0; }
+.rail .logo { width: 30px; height: 30px; border: 1px solid rgba(240,163,42,.4); background: rgba(240,163,42,.1); border-radius: 3px; display: grid; place-items: center; font: 700 12px var(--font-display); color: var(--signal); }
+.rail i { width: 18px; height: 18px; border-radius: 3px; background: var(--iron-700); }
+.rail i.on { background: var(--signal); }
+.canvas { padding: 22px; display: grid; gap: 12px; min-width: 0; }
+
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.top h3 { font-size: 26px; line-height: 1; }
+.top .sub { margin-top: 8px; font-size: 12px; color: var(--steel-dim); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.live { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: 3px; color: var(--paper); font-weight: 600; font-size: 11px; }
+.live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 4px; background: var(--iron-900); }
+.seg span { padding: 5px 10px; font-size: 11px; font-weight: 600; color: var(--steel-dim); border-radius: 3px; }
+.seg span.on { background: var(--iron-700); color: var(--paper); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; background: var(--signal); color: var(--iron-950); }
+
+.attn { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(226,87,76,.3); background: rgba(226,87,76,.07); border-radius: 5px; font-size: 12px; color: var(--paper); }
+.attn .lead { font-weight: 700; margin-right: 4px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--line-strong); font-size: 11px; font-weight: 600; color: var(--paper); background: var(--iron-850); white-space: nowrap; }
+.pill svg { width: 11px; height: 11px; flex: none; }
+.pill.crit svg { color: var(--crit); } .pill.warn svg { color: var(--warn); }
+.attn .go { margin-left: auto; font-weight: 600; color: var(--steel); }
+
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.kpi { background: var(--iron-850); padding: 14px 16px; display: grid; gap: 6px; min-width: 0; align-content: start; }
+.kpi .v { font: 600 28px/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--paper); }
+.kpi .v small { font-size: 12px; color: var(--steel-faint); font-weight: 500; margin-left: 3px; }
+.kpi .d { font-size: 11px; color: var(--steel-dim); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.delta { font-weight: 700; color: var(--paper); }
+.spark { height: 26px; width: 100%; }
+.mix { display: flex; height: 6px; gap: 2px; margin-block: 10px; }
+.mix i { border-radius: 2px; }
+
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--iron-850); border: 1px solid var(--line); border-radius: 5px; padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.tile-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tile-h .t { font: 600 10px/1 var(--font-display); letter-spacing: .2em; text-transform: uppercase; color: var(--steel-dim); }
+.tile-h .m { font-size: 11px; color: var(--steel-faint); }
+.c8 { grid-column: span 8; } .c4 { grid-column: span 4; } .c7 { grid-column: span 7; } .c5 { grid-column: span 5; }
+
+.srow { display: grid; grid-template-columns: 28px minmax(110px, 1.1fr) minmax(140px, 2fr) 74px 82px; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line-soft); }
+.srow.head { font: 600 9px/1 var(--font-display); letter-spacing: .16em; text-transform: uppercase; color: var(--steel-faint); padding: 0 0 8px; border-top: 0; }
+.ico { width: 28px; height: 28px; border-radius: 3px; background: var(--iron-700); border: 1px solid var(--line); }
+.nm { color: var(--paper); font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nm small { display: block; font-weight: 500; font-size: 11px; color: var(--steel-faint); }
+.bullet { position: relative; height: 18px; }
+.bullet .track { position: absolute; inset: 7px 0; background: var(--iron-700); border-radius: 2px; }
+.bullet .fill { position: absolute; top: 5px; bottom: 5px; left: 0; border-radius: 0 4px 4px 0; background: var(--steel); }
+.bullet .min { position: absolute; top: 1px; bottom: 1px; width: 2px; background: var(--paper); border-radius: 1px; }
+.crit-row .fill { background: var(--crit); } .warn-row .fill { background: var(--warn); }
+.cover { text-align: right; font: 600 13px var(--font-display); font-variant-numeric: tabular-nums; color: var(--paper); }
+.cover small { display: inline-flex; align-items: center; gap: 4px; font: 600 10px var(--font-body); color: var(--steel-dim); }
+.cover small svg { width: 10px; height: 10px; }
+.crit-row .cover small svg { color: var(--crit); } .warn-row .cover small svg { color: var(--warn); } .ok-row .cover small svg { color: var(--ok); }
+.more { font-size: 11px; font-weight: 600; color: var(--steel); padding-top: 4px; }
+
+.twin { aspect-ratio: 4 / 3; max-width: 100%; border-radius: 4px; border: 1px solid var(--line); background: var(--iron-900); display: grid; place-items: center; color: var(--steel-faint); font-size: 11px; text-align: center; padding: 16px; }
+.twin b { display: block; font: 600 13px var(--font-display); color: var(--steel); margin-bottom: 4px; }
+.twin .open { display: inline-block; margin-top: 10px; padding: 5px 10px; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--paper); font-weight: 600; }
+
+.gen { display: grid; gap: 10px; }
+.grow, .gscale { display: grid; grid-template-columns: minmax(84px, 120px) 1fr 44px; gap: 10px; align-items: center; font-size: 12px; }
+.grow .n { color: var(--paper); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gbar { position: relative; height: 14px; }
+.gbar .track { position: absolute; inset: 5px 0; background: var(--iron-700); border-radius: 2px; }
+.gbar .fill { position: absolute; top: 4px; bottom: 4px; left: 0; border-radius: 0 4px 4px 0; }
+.gbar .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--steel-dim); }
+.gbar .tick.lim { background: var(--paper); width: 2px; }
+.grow .p { text-align: right; font: 600 12px var(--font-display); font-variant-numeric: tabular-nums; color: var(--paper); }
+.gscale { font-size: 10px; color: var(--steel-faint); }
+.gscale div { position: relative; height: 12px; }
+.gscale span { position: absolute; transform: translateX(-50%); }
+
+.trend svg { width: 100%; height: auto; display: block; }
+.trend .bar { fill: var(--steel-faint); }
+.trend .bar.today { fill: var(--paper); }
+.trend .bar:hover { fill: var(--steel); }
+.trend text { fill: var(--steel-faint); font: 500 10px var(--font-body); }
+.trend .grid-l { stroke: var(--line-soft); }
+.trend .avg { stroke: var(--steel); stroke-dasharray: 3 3; }
+
+.prod { display: grid; gap: 12px; }
+.prod-bar { display: flex; gap: 2px; height: 10px; }
+.prod-bar i { border-radius: 2px; }
+.prod-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 12px; }
+.prod-list div { display: flex; justify-content: space-between; gap: 8px; }
+.prod-list span { display: inline-flex; align-items: center; gap: 6px; color: var(--steel); }
+.prod-list span::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.prod-list b { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl-wrap table { min-width: 520px; }
+th { text-align: left; font: 600 9px/1 var(--font-display); letter-spacing: .16em; text-transform: uppercase; color: var(--steel-faint); padding: 0 10px 8px 0; }
+td { padding: 9px 10px 9px 0; border-top: 1px solid var(--line-soft); color: var(--steel); font-variant-numeric: tabular-nums; }
+td:first-child { color: var(--paper); font-weight: 600; }
+td.r, th.r { text-align: right; }
+.sh { display: inline-block; padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 3px; font-size: 10px; font-weight: 700; color: var(--paper); }
+.st { font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; color: var(--paper); }
+.st::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+
+.anno { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 28px; }
+.anno div { display: grid; gap: 4px; font-size: 13px; align-content: start; }
+.anno .k { font: 600 10px/1 var(--font-display); color: var(--steel-dim); letter-spacing: .14em; }
+
+.vtable-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 5px; }
+.vtable { min-width: 760px; }
+.vtable th { padding: 12px 14px 10px; background: var(--iron-800); }
+.vtable td { padding: 12px 14px; vertical-align: top; font-size: 13px; }
+.vtable td:first-child { width: 22%; }
+.x { color: var(--steel-faint); text-decoration: line-through; text-decoration-color: rgba(226,87,76,.6); }
+.palette { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.pgroup { border: 1px solid var(--line); border-radius: 5px; background: var(--iron-900); padding: 16px; display: grid; gap: 12px; align-content: start; }
+.pgroup p { font-size: 12px; color: var(--steel-dim); }
+.sw { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; font-size: 12px; }
+.sw i { width: 26px; height: 26px; border-radius: 3px; background: var(--c); border: 1px solid var(--line); }
+.sw code { background: transparent; padding: 0; color: var(--steel-dim); font-size: 11px; }
+.sw s { color: var(--steel-faint); font-size: 11px; }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 28px; font-size: 13px; padding: 0; margin: 0; list-style: none; }
+.rules li { padding-left: 14px; position: relative; }
+.rules li::before { content: ""; position: absolute; left: 0; top: .75em; width: 6px; height: 1px; background: var(--steel-dim); }
+
+.steps { display: grid; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.step { display: grid; grid-template-columns: 92px minmax(0, 1fr) minmax(0, 250px); gap: 18px; padding: 16px 18px; border-top: 1px solid var(--line); background: var(--iron-900); }
+.step:first-child { border-top: 0; }
+.step .time { font: 600 13px var(--font-display); font-variant-numeric: tabular-nums; color: var(--paper); }
+.step .time small { display: block; font: 500 11px var(--font-body); color: var(--steel-faint); }
+.step h3 { margin-bottom: 4px; }
+.step p { font-size: 13px; }
+.step .files { display: grid; gap: 4px; align-content: start; font-size: 12px; }
+.step .files code { justify-self: start; }
+.timeline { display: flex; height: 6px; gap: 2px; }
+.timeline i { background: var(--steel-faint); border-radius: 2px; }
+.timeline i:nth-child(odd) { background: var(--steel); }
+.dod { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 28px; list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.dod li { display: flex; gap: 10px; }
+.dod li::before { content: ""; flex: none; margin-top: 5px; width: 10px; height: 10px; border: 1px solid var(--steel-dim); border-radius: 2px; }
+
+@media (max-width: 900px) {
+  .c8, .c4, .c7, .c5 { grid-column: span 12; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step { grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 560px) {
+  .app { grid-template-columns: 1fr; }
+  .rail { display: none; }
+  .canvas { padding: 14px; }
+  .attn .go { margin-left: 0; }
+  .srow { grid-template-columns: 28px minmax(0, 1fr) 82px; row-gap: 6px; }
+  .srow .bullet { grid-column: 2 / -1; grid-row: 2; }
+  .srow .minv, .srow.head .bh { display: none; }
+  .prod-list { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fill { transform-origin: left; animation: grow .6s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes grow { from { transform: scaleX(.001); } }
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-crit" viewBox="0 0 12 12"><path d="M6 1 11 10.5H1Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 4.6v2.6M6 8.6v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.4v3M6 8.3v.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m3.8 6.1 1.5 1.5 2.9-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<main class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Blueprint · Divisi Casting · Dashboard v2</div>
+    <h1>Dashboard yang menjawab satu pertanyaan dulu: material mana yang perlu ditindak sekarang?</h1>
+    <p>Dashboard sekarang memberi bobot yang sama ke semua elemen: 3D meja selebar layar, grafik skala log, donut, dan Pareto dua sumbu. Versi baru menyusunnya jadi tiga lapis: <b>peringatan → angka kunci → detail</b>. Arah visual tetap mengikuti <code>DESIGN.md</code> (dark industrial, bento 12 kolom, amber untuk tindakan). Logika yang sudah ada juga dipakai ulang tanpa perubahan: <code>gentaniUsage</code>, <code>effBonFinal</code>, <code>stokMinimum</code>, <code>kapasitasTabung</code>.</p>
+    <div class="meta-row">
+      <span>Stack <b>React 19 · Tailwind 3 · Chart.js 4</b></span>
+      <span>Dependency baru <b>tidak ada</b></span>
+      <span>Target build <b>30 menit, 8 langkah</b></span>
+      <span>Berkas utama <b>src/pages/Dashboard.jsx</b></span>
+    </div>
+  </header>
+
+  <!-- 1. DIAGNOSIS -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">01 · Diagnosis</div>
+      <h2>Lima hal yang membuat dashboard sekarang belum terasa seperti produk jadi</h2>
+    </div>
+    <div class="diag">
+      <div><span class="tag">Hierarki</span><div class="was">3D Meja Inokulasi memakan 12 kolom × 500px di posisi paling atas.</div><div class="now">Material kritis dan gentani over baru terlihat setelah scroll.</div></div>
+      <div><span class="tag">Skala log</span><div class="was">Bar pemakaian dan Pareto pakai sumbu logaritmik karena LMC (100 kg/lot) jauh lebih besar dari Sn (2 kg/lot).</div><div class="now">Panjang bar tidak bisa dibandingkan. Diganti dengan % terhadap batas gentani, yang sudah setara antar material.</div></div>
+      <div><span class="tag">Dua sumbu</span><div class="was">Pareto: bar kg skala log di kiri + garis kumulatif % di kanan.</div><div class="now">Grafik dua sumbu y mudah salah dibaca. Dihapus.</div></div>
+      <div><span class="tag">Warna bentrok</span><div class="was">1TR = merah danger, KAI = amber waspada, CRANK = hijau success. Ini melanggar prinsip 4 di DESIGN.md sendiri.</div><div class="now">Palet produk baru tidak memakai hue status dan lolos uji colorblind.</div></div>
+      <div><span class="tag">Duplikasi</span><div class="was">Lot besar tampil 2× (tile + donut), data shift tampil 2× (Bon Periode + Distribusi Shift).</div><div class="now">Digabung jadi 4 KPI, masing-masing dengan pembanding periode sebelumnya.</div></div>
+    </div>
+  </section>
+
+  <!-- 2. LAYOUT -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">02 · Tata letak</div>
+      <h2>Urutan dari atas ke bawah mengikuti urutan baca</h2>
+      <p>Bento 12 kolom, max 1480px, gap 12px, padding tile 16px, radius 5px (sesuai DESIGN.md). Setiap baris menjawab satu pertanyaan. Di HP semua tile jadi satu kolom dengan urutan sama, karena urutan prioritasnya tidak berubah.</p>
+    </div>
+
+    <div class="frame" role="img" aria-label="Mock dashboard MatPrep v2 dengan contoh data">
+      <div class="frame-bar"><span class="dots"><i></i><i></i><i></i></span><span>matprep · Dashboard</span><span class="sample">Contoh data</span></div>
+      <div class="app">
+        <nav class="rail" aria-hidden="true"><span class="logo">MP</span><i class="on"></i><i></i><i></i><i></i></nav>
+        <div class="canvas">
+
+          <div class="top">
+            <div>
+              <h3>Dashboard</h3>
+              <div class="sub"><span>Rabu, 18 November 2026</span><span class="live">Shift Red · Open · Day</span></div>
+            </div>
+            <div class="controls">
+              <div class="seg"><span>1 Hari</span><span class="on">7 Hari</span><span>30 Hari</span></div>
+              <span class="btn">Tutup Shift Red →</span>
+            </div>
+          </div>
+
+          <div class="attn">
+            <span class="lead">3 perlu tindakan</span>
+            <span class="pill crit"><svg><use href="#i-crit"/></svg>Mg Denodule di bawah minimum</span>
+            <span class="pill crit"><svg><use href="#i-crit"/></svg>Sn di bawah minimum</span>
+            <span class="pill warn"><svg><use href="#i-warn"/></svg>Gentani Mg Denodule 104%</span>
+            <span class="go">Lihat stok ↓</span>
+          </div>
+
+          <div class="kpis">
+            <div class="kpi">
+              <div class="eyebrow">Pemakaian</div>
+              <div class="v">9.412<small>kg</small></div>
+              <svg class="spark" viewBox="0 0 120 26" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="#A7B0B3" stroke-width="1.5" vector-effect="non-scaling-stroke" points="2,20 21,9 40,14 60,6 79,19 98,4 118,4"/><circle cx="118" cy="4" r="2.5" fill="#ECE9E2"/></svg>
+              <div class="d"><span class="delta">▲ 6,2%</span>vs 7 hari sebelumnya</div>
+            </div>
+            <div class="kpi">
+              <div class="eyebrow">Bon</div>
+              <div class="v">14</div>
+              <div class="mix"><i style="flex:13;background:var(--steel-dim)"></i><i style="flex:1;background:var(--paper)"></i></div>
+              <div class="d">13 closed · 1 open</div>
+            </div>
+            <div class="kpi">
+              <div class="eyebrow">Lot besar</div>
+              <div class="v">236</div>
+              <div class="mix"><i style="flex:92;background:var(--p-2tr)"></i><i style="flex:64;background:var(--p-1tr)"></i><i style="flex:48;background:var(--p-kai)"></i><i style="flex:32;background:var(--p-crank)"></i></div>
+              <div class="d"><span class="delta">▼ 3,1%</span>vs 7 hari sebelumnya</div>
+            </div>
+            <div class="kpi">
+              <div class="eyebrow">Gentani dalam batas</div>
+              <div class="v">8<small>/ 10 material</small></div>
+              <div class="mix"><i style="flex:8;background:var(--steel-dim)"></i><i style="flex:1;background:var(--warn)"></i><i style="flex:1;background:var(--crit)"></i></div>
+              <div class="d">1 waspada · 1 over</div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="tile c8" id="stok">
+              <div class="tile-h"><span class="t">Stok material</span><span class="m">sisa + bon · urut dari paling kritis</span></div>
+              <div>
+                <div class="srow head"><span></span><span>Material</span><span class="bh">Stok vs kapasitas tabung · ┃ minimum</span><span class="cover minv">Stok</span><span class="cover">Cukup untuk</span></div>
+                <div class="srow crit-row"><i class="ico"></i><span class="nm">Mg Denodule<small>min 50 kg</small></span><div class="bullet" title="38 kg dari kapasitas 200 kg, minimum 50 kg"><span class="track"></span><span class="fill" style="width:19%"></span><span class="min" style="left:25%"></span></div><span class="cover minv">38 kg</span><span class="cover">0,6 hari<br><small><svg><use href="#i-crit"/></svg>Kritis</small></span></div>
+                <div class="srow crit-row"><i class="ico"></i><span class="nm">Sn<small>min 30 kg</small></span><div class="bullet" title="22 kg dari kapasitas 150 kg, minimum 30 kg"><span class="track"></span><span class="fill" style="width:14.7%"></span><span class="min" style="left:20%"></span></div><span class="cover minv">22 kg</span><span class="cover">1,2 hari<br><small><svg><use href="#i-crit"/></svg>Kritis</small></span></div>
+                <div class="srow warn-row"><i class="ico"></i><span class="nm">Inocarb<small>min 100 kg</small></span><div class="bullet" title="140 kg dari kapasitas 300 kg, minimum 100 kg"><span class="track"></span><span class="fill" style="width:46.7%"></span><span class="min" style="left:33.3%"></span></div><span class="cover minv">140 kg</span><span class="cover">1,2 hari<br><small><svg><use href="#i-warn"/></svg>Rendah</small></span></div>
+                <div class="srow warn-row"><i class="ico"></i><span class="nm">LMC<small>min 1.500 kg</small></span><div class="bullet" title="1.850 kg dari kapasitas 4.000 kg, minimum 1.500 kg"><span class="track"></span><span class="fill" style="width:46.3%"></span><span class="min" style="left:37.5%"></span></div><span class="cover minv">1.850 kg</span><span class="cover">2,3 hari<br><small><svg><use href="#i-warn"/></svg>Rendah</small></span></div>
+                <div class="srow ok-row"><i class="ico"></i><span class="nm">Cu<small>min 40 kg</small></span><div class="bullet" title="80 kg dari kapasitas 160 kg, minimum 40 kg"><span class="track"></span><span class="fill" style="width:50%"></span><span class="min" style="left:25%"></span></div><span class="cover minv">80 kg</span><span class="cover">2,2 hari<br><small><svg><use href="#i-ok"/></svg>Aman</small></span></div>
+                <div class="srow ok-row"><i class="ico"></i><span class="nm">Superseed<small>min 30 kg</small></span><div class="bullet" title="60 kg dari kapasitas 120 kg, minimum 30 kg"><span class="track"></span><span class="fill" style="width:50%"></span><span class="min" style="left:25%"></span></div><span class="cover minv">60 kg</span><span class="cover">2,5 hari<br><small><svg><use href="#i-ok"/></svg>Aman</small></span></div>
+              </div>
+              <div class="more">Tampilkan 4 material lainnya ↓ · 1 belum punya stok minimum</div>
+            </div>
+
+            <div class="tile c4">
+              <div class="tile-h"><span class="t">Meja inokulasi</span><span class="m">3D</span></div>
+              <div class="twin"><div><b>Meja Inokulasi 3D</b>Thumbnail statis dulu. Model interaktif baru dimuat setelah diklik.<br><span class="open">Buka 3D</span></div></div>
+            </div>
+
+            <div class="tile c7">
+              <div class="tile-h"><span class="t">Pemakaian vs gentani</span><span class="m">% dari batas · ┃ 90% waspada · ┃ 100% batas</span></div>
+              <div class="gen" id="gen"></div>
+            </div>
+
+            <div class="tile c5 trend">
+              <div class="tile-h"><span class="t">Pemakaian harian</span><span class="m">kg · garis putus = rata-rata 1.345</span></div>
+              <svg id="trend" viewBox="0 0 360 170" role="img" aria-label="Pemakaian harian 12 sampai 18 November, hari ini 1.467 kg"></svg>
+            </div>
+
+            <div class="tile c5">
+              <div class="tile-h"><span class="t">Mix produksi</span><span class="m">236 lot besar</span></div>
+              <div class="prod">
+                <div class="prod-bar"><i style="flex:92;background:var(--p-2tr)"></i><i style="flex:64;background:var(--p-1tr)"></i><i style="flex:48;background:var(--p-kai)"></i><i style="flex:32;background:var(--p-crank)"></i></div>
+                <div class="prod-list">
+                  <div><span style="--c:var(--p-2tr)">2TR</span><b>92 · 39%</b></div>
+                  <div><span style="--c:var(--p-1tr)">1TR</span><b>64 · 27%</b></div>
+                  <div><span style="--c:var(--p-kai)">KAI</span><b>48 · 20%</b></div>
+                  <div><span style="--c:var(--p-crank)">CRANK</span><b>32 · 14%</b></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tile c7">
+              <div class="tile-h"><span class="t">Aktivitas shift</span><span class="m">5 terakhir · Semua →</span></div>
+              <div class="tbl-wrap">
+                <table>
+                  <thead><tr><th>Tanggal</th><th>Shift</th><th>Lot besar</th><th class="r">Bon (kg)</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td>18 Nov</td><td><span class="sh">RED</span></td><td>2TR 14 · 1TR 9 · KAI 6</td><td class="r">1.475</td><td><span class="st" style="--c:var(--signal)">Open</span></td></tr>
+                    <tr><td>17 Nov</td><td><span class="sh">WHITE</span></td><td>2TR 12 · KAI 8 · CRANK 5</td><td class="r">1.320</td><td><span class="st" style="--c:var(--steel-faint)">Closed</span></td></tr>
+                    <tr><td>17 Nov</td><td><span class="sh">RED</span></td><td>2TR 13 · 1TR 10</td><td class="r">1.410</td><td><span class="st" style="--c:var(--steel-faint)">Closed</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="anno">
+      <div><span class="k">BARIS 1 · HEADER</span><b>Status shift + satu tombol amber</b>Tombolnya berubah sesuai keadaan: "Buat Bon" jika semua shift tertutup, "Tutup Shift Red" jika ada shift yang masih Open. Tidak ada tombol primer kedua.</div>
+      <div><span class="k">BARIS 2 · PERINGATAN</span><b>Strip "perlu tindakan"</b>Diisi dari stok di bawah <code>stokMinimum</code> dan gentani ≥ <code>ambangWaspada</code>. Jika kosong, strip menyusut jadi satu baris "Semua aman".</div>
+      <div><span class="k">BARIS 3 · KPI</span><b>4 angka dengan pembanding</b>Delta dihitung terhadap periode sebelumnya yang panjangnya sama (7 hari vs 7 hari sebelumnya), jadi setiap angka punya pembanding.</div>
+      <div><span class="k">BARIS 4–6 · DETAIL</span><b>Stok jadi tile utama, 3D jadi pendamping</b>3D tetap ada di kolom 4 dan baru dimuat saat diklik, sehingga halaman terbuka lebih cepat di HP lantai produksi.</div>
+    </div>
+  </section>
+
+  <!-- 3. DATA VIZ -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">03 · Gaya visualisasi data</div>
+      <h2>Satu pertanyaan, satu bentuk grafik</h2>
+      <p>Bentuk grafik dipilih dari pertanyaan yang perlu dijawab, bukan dari tampilannya. Bar status dibuat dengan HTML/CSS biasa (ringan, bisa dibaca screen reader, tanpa canvas). Chart.js hanya dipakai untuk satu grafik tren.</p>
+    </div>
+    <div class="vtable-wrap">
+      <table class="vtable">
+        <thead><tr><th>Pertanyaan operator</th><th>Bentuk</th><th>Sebelumnya</th><th>Aturan</th></tr></thead>
+        <tbody>
+          <tr><td>Stok mana yang hampir habis?</td><td>Bullet bar per material: isi = stok, track = <code>kapasitasTabung</code>, garis tegak = <code>stokMinimum</code>. Ditambah "cukup untuk N hari".</td><td class="x">3D sebagai satu-satunya tampilan stok</td><td>Urut dari paling kritis. Warna hanya untuk Kritis/Rendah, sisanya abu baja. Status selalu dengan ikon + teks.</td></tr>
+          <tr><td>Pemakaian wajar atau boros?</td><td>Bar horizontal % terhadap batas gentani, dengan tanda di ambang waspada dan 100%.</td><td class="x">Bar kg skala log, Pareto dua sumbu</td><td>Satu sumbu linear 0–120%. Nilai ditulis di ujung bar.</td></tr>
+          <tr><td>Pemakaian naik atau turun?</td><td>Kolom harian (Chart.js) + garis rata-rata putus-putus di sumbu yang sama.</td><td class="x">belum ada</td><td>Kolom hari ini berwarna kertas, sisanya abu. Tooltip menampilkan pembagian shift Red/White.</td></tr>
+          <tr><td>Berapa angka utamanya?</td><td>Angka besar + sparkline atau bar mix + delta.</td><td class="x">6 tile angka terpisah</td><td>Delta ditulis ▲/▼ + %, tanpa hijau/merah, karena kenaikan pemakaian belum tentu baik.</td></tr>
+          <tr><td>Bagaimana komposisi produk?</td><td>Satu bar 100% bertumpuk + daftar berlabel.</td><td class="x">Donut + tile duplikat</td><td>Celah 2px antar segmen. Nama dan angka selalu ditulis.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="palette">
+      <div class="pgroup">
+        <h3>Status (khusus status)</h3>
+        <p>Hanya untuk keadaan, tidak pernah untuk seri data. Selalu didampingi ikon + teks.</p>
+        <div class="sw" style="--c:var(--crit)"><i></i><b>Kritis · over</b><code>#E2574C</code></div>
+        <div class="sw" style="--c:var(--warn)"><i></i><b>Rendah · waspada</b><code>#F0A32A</code></div>
+        <div class="sw" style="--c:var(--ok)"><i></i><b>Aman · dalam batas</b><code>#4DBE8A</code></div>
+      </div>
+      <div class="pgroup">
+        <h3>Produk (kategorikal)</h3>
+        <p>Urutan tetap 2TR → 1TR → KAI → CRANK. Lolos 5 uji di <code>#111518</code>: lightness, chroma, CVD ΔE ≥ 15,9, normal ΔE ≥ 19,7, kontras ≥ 3:1.</p>
+        <div class="sw" style="--c:var(--p-2tr)"><i></i><b>2TR</b><span><s>#6E9FE8</s> <code>#3987E5</code></span></div>
+        <div class="sw" style="--c:var(--p-1tr)"><i></i><b>1TR</b><span><s>#E2574C</s> <code>#D55181</code></span></div>
+        <div class="sw" style="--c:var(--p-kai)"><i></i><b>KAI</b><span><s>#F0A32A</s> <code>#9085E9</code></span></div>
+        <div class="sw" style="--c:var(--p-crank)"><i></i><b>CRANK</b><span><s>#4DBE8A</s> <code>#199E70</code></span></div>
+      </div>
+      <div class="pgroup">
+        <h3>Netral (sebagian besar layar)</h3>
+        <p>Data biasa berwarna abu baja, nilai yang sedang disorot berwarna kertas. Amber tetap khusus untuk tombol aksi dan waspada, sesuai DESIGN.md.</p>
+        <div class="sw" style="--c:var(--paper)"><i></i><b>Kertas · sorotan</b><code>paper</code></div>
+        <div class="sw" style="--c:var(--steel)"><i></i><b>Baja · data</b><code>steel</code></div>
+        <div class="sw" style="--c:var(--iron-700)"><i></i><b>Track · kosong</b><code>iron-700</code></div>
+      </div>
+    </div>
+
+    <ul class="rules">
+      <li><b>Bar tipis</b>: tinggi 8px, ujung data membulat 4px, menempel ke baseline.</li>
+      <li><b>Grid samar</b>: <code>rgba(255,255,255,.06)</code>, tanpa garis sumbu.</li>
+      <li><b>Angka</b>: Space Grotesk <code>tabular-nums</code>, format <code>id-ID</code> lewat <code>fmtNum</code>, satuan kg berwarna redup.</li>
+      <li><b>Label langsung</b> di ujung bar. Tidak ada angka di setiap titik garis.</li>
+      <li><b>Tooltip</b> di setiap bar dan kolom. Area hover lebih besar dari bar-nya.</li>
+      <li><b>Shift Red/White</b> ditampilkan sebagai badge teks bergaris tepi, bukan warna merah.</li>
+      <li><b>Material tidak diberi warna</b> karena ada 10. Identitasnya dari foto karung (<code>MaterialIcon</code>) + nama.</li>
+      <li><b>Empty state</b> menyebut apa yang akan muncul dan langkah untuk mengisinya.</li>
+    </ul>
+  </section>
+
+  <!-- 4. BUILD ORDER -->
+  <section>
+    <div class="sec-head">
+      <div class="eyebrow">04 · Urutan pengembangan</div>
+      <h2>Data dulu, lalu kerangka, lalu isi dari atas ke bawah</h2>
+      <p>Logika dikerjakan duluan sebagai fungsi murni yang punya uji, sehingga komponen UI tinggal menampilkan data. Setiap langkah berakhir dengan halaman yang masih bisa jalan, jadi pekerjaan bisa berhenti di langkah mana pun tanpa ada yang rusak.</p>
+    </div>
+    <div class="timeline" aria-hidden="true"><i style="flex:5"></i><i style="flex:3"></i><i style="flex:4"></i><i style="flex:4"></i><i style="flex:5"></i><i style="flex:3"></i><i style="flex:3"></i><i style="flex:3"></i></div>
+    <div class="steps">
+      <div class="step"><div class="time">00–05<small>5 menit</small></div><div><h3>Selector data murni</h3><p><code>buildDashboard(shifts, settings, period)</code> mengembalikan <code>attention[]</code>, <code>kpis</code> + delta periode sebelumnya, <code>stockRows</code> (stok, min, kapasitas, hari cukup, status), <code>gentani</code>, <code>daily[]</code>, dan <code>productMix</code>. Memakai ulang <code>gentaniUsage</code> dan <code>effBonFinal</code>. Saat ini perhitungan yang sama ditulis dua kali di <code>Dashboard.jsx</code> (render dan <code>useEffect</code>), dan duplikasi itu ikut hilang.</p></div><div class="files"><code>src/lib/dashboard.js</code><code>src/lib/dashboard.check.mjs</code></div></div>
+      <div class="step"><div class="time">05–08<small>3 menit</small></div><div><h3>Token warna</h3><p>Ganti <code>PRODUCT_TONES</code> ke palet yang sudah divalidasi. Perbarui bagian warna produk dan Chart.js di DESIGN.md (hapus skala log, Pareto, donut).</p></div><div class="files"><code>src/constants/defaults.js</code><code>DESIGN.md</code></div></div>
+      <div class="step"><div class="time">08–12<small>4 menit</small></div><div><h3>Kerangka halaman</h3><p>Header (status shift + tombol kontekstual + rentang waktu) dan bento dengan tile skeleton. Hapus Pareto, donut, Bon Periode, Distribusi Shift, dan Lot Besar lama.</p></div><div class="files"><code>src/pages/Dashboard.jsx</code></div></div>
+      <div class="step"><div class="time">12–16<small>4 menit</small></div><div><h3>Strip peringatan + 4 KPI</h3><p>Pill berisi ikon Lucide (<code>AlertTriangle</code>, <code>CircleAlert</code>, <code>CircleCheck</code>) + teks. Sparkline dari SVG polyline, tanpa Chart.js.</p></div><div class="files"><code>Dashboard.jsx</code> (komponen lokal)</div></div>
+      <div class="step"><div class="time">16–21<small>5 menit</small></div><div><h3>Tile stok utama</h3><p>Baris bullet bar dari CSS biasa + <code>MaterialIcon</code>. Tampilkan 6 baris lalu "tampilkan semua". Material tanpa minimum diberi chip yang mengarah ke Pengaturan.</p></div><div class="files"><code>Dashboard.jsx</code></div></div>
+      <div class="step"><div class="time">21–24<small>3 menit</small></div><div><h3>Pemakaian vs gentani</h3><p>Bar % dengan tanda di <code>ambangWaspada</code> dan 100%. Skala berhenti di 120%, nilai di atasnya diberi panah ▸ dan angka aslinya.</p></div><div class="files"><code>Dashboard.jsx</code></div></div>
+      <div class="step"><div class="time">24–27<small>3 menit</small></div><div><h3>Tren harian + mix produksi</h3><p>Satu Chart.js bar dengan satu sumbu y linear. Rata-rata ditampilkan sebagai dataset garis di sumbu yang sama. Mix produksi pakai flex div.</p></div><div class="files"><code>Dashboard.jsx</code></div></div>
+      <div class="step"><div class="time">27–30<small>3 menit</small></div><div><h3>Aktivitas, 3D, QA</h3><p>Tabel 5 shift terakhir. 3D dijadikan kartu yang dimuat saat diklik. Cek layout di lebar 375px. Jalankan <code>npm run lint</code> + <code>build</code> + <code>node src/lib/dashboard.check.mjs</code>, lalu screenshot desktop dan HP.</p></div><div class="files"><code>Dashboard.jsx</code><code>MejaInokulasi3D.jsx</code> (tidak diubah)</div></div>
+    </div>
+
+    <div class="sec-head" style="margin-top:8px"><h3>Selesai jika</h3></div>
+    <ul class="dod">
+      <li>Material kritis terlihat tanpa scroll di layar 1366×768.</li>
+      <li>Tidak ada skala log, sumbu y ganda, atau donut.</li>
+      <li>Merah, amber, dan hijau hanya dipakai untuk status (amber juga untuk tombol aksi).</li>
+      <li>Setiap tile punya empty state yang jelas saat data kosong.</li>
+      <li><code>dashboard.check.mjs</code> lulus: delta, hari cukup, urutan status.</li>
+      <li>Lint dan build bersih, tidak ada scroll horizontal di 375px.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+(() => {
+  // gentani bars — contoh data
+  const gen = [['Mg Denodule', 104], ['LMC', 96], ['Cu', 88], ['Inocarb', 82], ['Sn', 71], ['Fe Sulfur', 64]];
+  const max = 120, amb = 90;
+  const pos = v => (Math.min(v, max) / max * 100).toFixed(2) + '%';
+  document.getElementById('gen').innerHTML = gen.map(([n, p]) => {
+    const tone = p > 100 ? 'var(--crit)' : p >= amb ? 'var(--warn)' : 'var(--steel)';
+    const label = p > 100 ? 'over batas' : p >= amb ? 'waspada' : 'aman';
+    return `<div class="grow" title="${n}: ${p}% dari batas gentani (${label})">
+      <span class="n">${n}</span>
+      <div class="gbar"><span class="track"></span><span class="fill" style="width:${pos(p)};background:${tone}"></span>
+        <span class="tick" style="left:${pos(amb)}"></span><span class="tick lim" style="left:${pos(100)}"></span></div>
+      <span class="p">${p}%</span></div>`;
+  }).join('') + `<div class="gscale"><span></span><div>${[0, 50, 90].map(v => `<span style="left:${pos(v)}">${v}%</span>`).join('')}<span style="left:${pos(100)};transform:none;padding-left:4px">100%</span></div><span></span></div>`;
+
+  // daily trend — contoh data
+  const days = [['12', 1210], ['13', 1380], ['14', 1295], ['15', 1420], ['16', 1180], ['17', 1460], ['18', 1467]];
+  const W = 360, H = 170, L = 34, B = 22, T = 8, top = 1600;
+  const y = v => T + (H - B - T) * (1 - v / top);
+  const step = (W - L) / days.length, bw = 18;
+  const avg = days.reduce((a, d) => a + d[1], 0) / days.length;
+  let s = '';
+  for (const t of [0, 500, 1000, 1500]) s += `<line class="grid-l" x1="${L}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${L - 6}" y="${y(t) + 3}" text-anchor="end">${t ? (t / 1000).toLocaleString('id-ID') + 'k' : 0}</text>`;
+  days.forEach(([d, v], i) => {
+    const x = L + step * i + (step - bw) / 2, h = y(0) - y(v);
+    s += `<path class="bar${i === days.length - 1 ? ' today' : ''}" d="M${x},${y(0)} v${-(h - 4)} q0,-4 4,-4 h${bw - 8} q4,0 4,4 v${h - 4} z"><title>${d} Nov: ${v.toLocaleString('id-ID')} kg</title></path>`;
+    s += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${d}</text>`;
+  });
+  s += `<line class="avg" x1="${L}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}"/>`;
+  document.getElementById('trend').innerHTML = s;
+})();
+</script>

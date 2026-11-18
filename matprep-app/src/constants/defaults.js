@@ -1,10 +1,12 @@
 export const PRODUCTS = ['2TR', '1TR', 'KAI', 'CRANK'];
 
+// Palet kategorikal tervalidasi (dataviz validator, permukaan #111518, urutan bersebelahan 2TR→1TR→KAI→CRANK):
+// tidak memakai hue status (merah/amber/hijau). Jangan ubah urutan tanpa validasi ulang.
 export const PRODUCT_TONES = {
-  '2TR':   { color: '#6E9FE8', soft: 'rgba(110, 159, 232, 0.16)', label: 'Steel Blue' },
-  '1TR':   { color: '#E2574C', soft: 'rgba(226, 87, 76, 0.16)',   label: 'Signal Red' },
-  'KAI':   { color: '#F0A32A', soft: 'rgba(240, 163, 42, 0.16)',  label: 'Amber' },
-  'CRANK': { color: '#4DBE8A', soft: 'rgba(77, 190, 138, 0.16)',  label: 'Green' },
+  '2TR':   { color: '#3987E5', soft: 'rgba(57, 135, 229, 0.16)',  label: 'Blue' },
+  '1TR':   { color: '#D55181', soft: 'rgba(213, 81, 129, 0.16)',  label: 'Magenta' },
+  'KAI':   { color: '#9085E9', soft: 'rgba(144, 133, 233, 0.16)', label: 'Violet' },
+  'CRANK': { color: '#199E70', soft: 'rgba(25, 158, 112, 0.16)',  label: 'Aqua' },
 };
 
 export const DEFAULT_SETTINGS = {

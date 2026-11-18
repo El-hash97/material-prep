@@ -1,44 +1,34 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import {
-  Chart, BarElement, CategoryScale, LinearScale, ArcElement,
-  Tooltip, Legend, BarController, DoughnutController,
-  LineController, LineElement, PointElement, LogarithmicScale,
+  Chart, BarElement, CategoryScale, LinearScale, Tooltip,
+  LineController, LineElement, PointElement,
 } from 'chart.js';
+import { Bar } from 'react-chartjs-2';
 import {
-  Plus, ArrowRight, ClipboardList, Package, AlertTriangle,
-  Database, ChevronRight,
+  Plus, ArrowRight, ChevronRight, ChevronDown, ChevronUp, Database, Box,
+  TriangleAlert, CircleAlert, CircleCheck, CircleDashed,
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
-import { getAllMaterials, effBonFinal, formatDate, gentaniUsage, fmtNum } from '../lib/calc';
+import { formatDate, fmtNum, todayStr } from '../lib/calc';
+import { buildDashboard } from '../lib/dashboard';
 import MaterialIcon from '../components/MaterialIcon';
 
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
-Chart.register(BarElement, CategoryScale, LinearScale, ArcElement, Tooltip, Legend, BarController, DoughnutController, LineController, LineElement, PointElement, LogarithmicScale);
-
-Chart.defaults.color = '#7C8588';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, LineController, LineElement, PointElement);
 Chart.defaults.font.family = 'Plus Jakarta Sans, sans-serif';
 
-const logTicks = axis => {
-  axis.ticks = axis.ticks.filter(t => Number.isInteger(Math.log10(t.value)));
-};
+const C = { paper: '#ECE9E2', steel: '#A7B0B3', dim: '#7C8588', faint: '#5A6366', grid: 'rgba(255,255,255,0.055)' };
+const fmt1 = n => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+const pctOf = (v, max) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 
-const DONUT_COLORS = PRODUCTS.map(p => PRODUCT_TONES[p].color);
-const GRID_COLOR = 'rgba(255,255,255,0.055)';
-const TICK_COLOR = '#7C8588';
-const TOOLTIP = {
-  backgroundColor: '#111518',
-  borderColor: 'rgba(255,255,255,0.14)',
-  borderWidth: 1,
-  titleColor: '#ECE9E2',
-  bodyColor: '#A7B0B3',
-  padding: 10,
-  cornerRadius: 3,
-  boxWidth: 8,
-  boxHeight: 8,
+const STATUS = {
+  crit:  { Icon: TriangleAlert, label: 'Kritis', icon: 'text-danger', fill: 'bg-danger' },
+  warn:  { Icon: CircleAlert, label: 'Rendah', icon: 'text-signal', fill: 'bg-signal' },
+  ok:    { Icon: CircleCheck, label: 'Aman', icon: 'text-success', fill: 'bg-steel' },
+  unset: { Icon: CircleDashed, label: 'Min belum diatur', icon: 'text-steel-faint', fill: 'bg-steel-dim' },
 };
 
 function TileHead({ label, meta, children }) {
@@ -53,653 +43,449 @@ function TileHead({ label, meta, children }) {
   );
 }
 
-function TileEmpty({ children }) {
+function Empty({ children, action }) {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-iron-850/70 px-6 text-center">
+    <div className="flex min-h-[160px] flex-col items-center justify-center gap-2 px-6 text-center">
       <span className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-steel-faint">
         <Database size={14} />
       </span>
-      <p className="max-w-[230px] text-xs leading-relaxed text-steel-faint">{children}</p>
+      <p className="max-w-[260px] text-xs leading-relaxed text-steel-faint">{children}</p>
+      {action}
     </div>
+  );
+}
+
+function Delta({ value, label }) {
+  if (value === null) return <span>belum ada pembanding</span>;
+  return (
+    <>
+      <span className="font-bold text-paper">{value >= 0 ? '▲' : '▼'} {fmt1(Math.abs(value))}%</span>
+      <span>vs {label}</span>
+    </>
+  );
+}
+
+function Spark({ values }) {
+  const max = Math.max(...values);
+  if (max <= 0) return <div className="h-[26px]" />;
+  const pts = values.map((v, i) => [(i / (values.length - 1)) * 118 + 1, 23 - (v / max) * 20]);
+  const [lx, ly] = pts.at(-1);
+  return (
+    <svg viewBox="0 0 120 26" className="h-[26px] w-full" preserveAspectRatio="none" aria-hidden="true">
+      <polyline fill="none" stroke={C.steel} strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={pts.map(p => p.join(',')).join(' ')} />
+      <circle cx={lx} cy={ly} r="2.5" fill={C.paper} />
+    </svg>
+  );
+}
+
+function Mix({ parts }) {
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  return (
+    <div className="my-2.5 flex h-1.5 gap-0.5 overflow-hidden rounded-[2px] bg-white/[0.06]">
+      {total > 0 && parts.filter(p => p.value > 0).map(p => (
+        <i key={p.key} className="rounded-[2px]" style={{ flex: p.value, backgroundColor: p.color }} title={`${p.key}: ${p.value}`} />
+      ))}
+    </div>
+  );
+}
+
+function Kpi({ label, value, unit, children, foot }) {
+  return (
+    <div className="flex min-w-0 flex-col bg-iron-850 px-4 py-3.5">
+      <div className="tile-label">{label}</div>
+      <div className="readout mt-2 text-[28px]">
+        {value}{unit && <span className="ml-1 text-xs font-medium text-steel-faint">{unit}</span>}
+      </div>
+      {children}
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-steel-dim">{foot}</div>
+    </div>
+  );
+}
+
+function StockRow({ r }) {
+  const st = STATUS[r.status];
+  return (
+    <div className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t border-white/[0.05] py-2.5 first:border-t-0 sm:grid-cols-[28px_minmax(110px,1.1fr)_minmax(120px,2fr)_76px_92px]">
+      <MaterialIcon material={r.material} />
+      <div className="min-w-0">
+        <div className="truncate text-[13px] font-semibold text-paper">{r.material}</div>
+        <div className="truncate text-[11px] text-steel-faint">
+          <span className="sm:hidden">{fmtNum(r.stok)} kg · </span>
+          {r.min > 0 ? `min ${fmtNum(r.min)} kg` : 'minimum belum diatur'}
+          {r.projected && ` · akhir shift ≈ ${fmtNum(Math.round(r.akhir))} kg`}
+        </div>
+      </div>
+      <div
+        className="relative col-span-2 col-start-2 h-[18px] sm:col-span-1 sm:col-start-auto"
+        title={`${fmtNum(r.stok)} kg dari kapasitas ${fmtNum(r.cap)} kg${r.min > 0 ? `, minimum ${fmtNum(r.min)} kg` : ''}`}
+      >
+        <span className="absolute inset-x-0 top-[7px] h-1 rounded-[2px] bg-iron-700" />
+        <span className={`absolute left-0 top-[5px] h-2 rounded-r-[4px] transition-[width] duration-700 ease-out ${st.fill}`} style={{ width: pctOf(r.stok, r.cap) }} />
+        {r.min > 0 && <span className="absolute inset-y-px w-0.5 rounded-[1px] bg-paper" style={{ left: pctOf(r.min, r.cap) }} />}
+      </div>
+      <div className="readout hidden text-right text-[13px] sm:block">{fmtNum(r.stok)}<span className="ml-0.5 text-[10px] font-medium text-steel-faint">kg</span></div>
+      <div className="col-start-3 row-start-1 text-right sm:col-start-auto sm:row-start-auto">
+        <div className="readout text-[13px]">{r.cover === null ? '—' : `${fmt1(r.cover)} hari`}</div>
+        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-steel-dim">
+          <st.Icon size={11} className={st.icon} />{st.label}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GentaniRow({ r, ambang }) {
+  const MAX = 120;
+  const fill = r.status === 'over' ? 'bg-danger' : r.status === 'warn' ? 'bg-signal' : 'bg-steel';
+  return (
+    <div
+      className="grid grid-cols-[minmax(84px,120px)_minmax(0,1fr)_48px] items-center gap-2.5 text-xs"
+      title={`${r.material}: ${fmtNum(Math.round(r.pemakaian))} kg dari batas ${fmtNum(Math.round(r.batas))} kg`}
+    >
+      <span className="truncate font-semibold text-paper">{r.material}</span>
+      <div className="relative h-3.5">
+        <span className="absolute inset-x-0 top-[5px] h-1 rounded-[2px] bg-iron-700" />
+        <span className={`absolute left-0 top-1 h-1.5 rounded-r-[4px] transition-[width] duration-700 ease-out ${fill}`} style={{ width: pctOf(r.pct, MAX) }} />
+        <span className="absolute inset-y-0 w-px bg-steel-dim" style={{ left: pctOf(ambang, MAX) }} />
+        <span className="absolute inset-y-0 w-0.5 bg-paper" style={{ left: pctOf(100, MAX) }} />
+      </div>
+      <span className="readout text-right text-xs">{r.pct > MAX && '▸'}{Math.round(r.pct)}%</span>
+    </div>
+  );
+}
+
+function Trend({ daily }) {
+  const worked = daily.filter(d => d.total > 0);
+  const avg = worked.length ? worked.reduce((a, d) => a + d.total, 0) / worked.length : 0;
+  const last = daily.length - 1;
+  const data = {
+    labels: daily.map(d => d.date.slice(8)),
+    datasets: [
+      {
+        label: 'Pemakaian',
+        data: daily.map(d => d.total),
+        backgroundColor: daily.map((_, i) => (i === last ? C.paper : C.faint)),
+        hoverBackgroundColor: daily.map((_, i) => (i === last ? C.paper : C.steel)),
+        borderRadius: { topLeft: 4, topRight: 4 },
+        borderSkipped: 'bottom',
+        maxBarThickness: 22,
+      },
+      {
+        type: 'line',
+        label: 'Rata-rata',
+        data: daily.map(() => avg),
+        borderColor: C.steel,
+        borderWidth: 1,
+        borderDash: [3, 3],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+      },
+    ],
+  };
+  const options = {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 500, easing: 'easeOutQuart' },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        filter: item => item.datasetIndex === 0,
+        backgroundColor: '#111518', borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1,
+        titleColor: C.paper, bodyColor: C.steel, padding: 10, cornerRadius: 3, displayColors: false,
+        callbacks: {
+          title: items => formatDate(daily[items[0].dataIndex].date),
+          label: item => `${fmtNum(item.raw)} kg`,
+          afterLabel: item => {
+            const d = daily[item.dataIndex];
+            return `Red ${fmtNum(d.red)} kg · White ${fmtNum(d.white)} kg`;
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true, grid: { color: C.grid }, border: { display: false },
+        ticks: { color: C.faint, font: { size: 10 }, maxTicksLimit: 5, callback: v => (v >= 1000 ? `${fmt1(v / 1000)}k` : v) },
+      },
+      x: {
+        grid: { display: false }, border: { display: false },
+        ticks: { color: C.faint, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 8 },
+      },
+    },
+  };
+  return (
+    <>
+      <div className="mb-3 text-[11px] text-steel-faint">
+        {avg > 0 ? <>Garis putus = rata-rata <span className="font-semibold text-steel">{fmtNum(Math.round(avg))} kg</span> per hari kerja</> : 'Belum ada pemakaian aktual'}
+      </div>
+      <div className="relative h-[190px]">
+        <Bar data={data} options={options} aria-label="Pemakaian harian" role="img" />
+      </div>
+    </>
   );
 }
 
 export default function Dashboard() {
   const navigate = useStore(s => s.navigate);
   const setCurrentBonId = useStore(s => s.setCurrentBonId);
-
-  const barRef = useRef(null);
-  const donutRef = useRef(null);
-  const bonRef = useRef(null);
-  const paretoRef = useRef(null);
-  const barInst = useRef(null);
-  const donutInst = useRef(null);
-  const bonInst = useRef(null);
-  const paretoInst = useRef(null);
-
   const [period, setPeriod] = useState(7);
-  const [bonShift, setBonShift] = useState('Red');
-
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const cutoff = new Date(now);
-  cutoff.setDate(cutoff.getDate() - (period - 1));
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const [showAllStock, setShowAllStock] = useState(false);
+  const [show3d, setShow3d] = useState(false);
 
   const settings = db.getSettings();
-  const allMats = getAllMaterials(settings);
   const shifts = db.getShifts();
-  const periodShifts = shifts.filter(s => (s.tanggal ?? '') >= cutoffStr);
-  const closedInPeriod = periodShifts.filter(s => s.status === 'Closed');
-  const openCount = periodShifts.length - closedInPeriod.length;
-  const redCount = periodShifts.filter(s => s.shift === 'Red').length;
-  const whiteCount = periodShifts.filter(s => s.shift === 'White').length;
-  const totalLB = periodShifts.reduce((a, s) => {
-    for (const p of PRODUCTS) a += s.lotBesarMap?.[p] ?? 0;
-    return a;
-  }, 0);
-  const periodLabel = period === 1 ? 'Hari Ini' : `${period} Hari Terakhir`;
-  const activeShift = shifts.find(s => s.status === 'Open');
-
-  const matPem = Object.fromEntries(allMats.map(m => [m, 0]));
-  for (const s of closedInPeriod) {
-    for (const l of s.bonLines) {
-      if (l.pemakaianAktual !== null && l.pemakaianAktual !== undefined) {
-        matPem[l.material] = (matPem[l.material] ?? 0) + l.pemakaianAktual;
-      }
-    }
-  }
-  const usageTotal = Object.values(matPem).reduce((a, v) => a + v, 0);
-  const hasUsage = usageTotal > 0;
-
-  const sortedMats = allMats
-    .map(m => ({ name: m, value: matPem[m] ?? 0 }))
-    .filter(m => m.value > 0)
-    .sort((a, b) => b.value - a.value);
-  const topShare = sortedMats.length && usageTotal > 0
-    ? (sortedMats[0].value / usageTotal) * 100
-    : 0;
-
-  const prodTotals = PRODUCTS.map(p => ({
-    p,
-    value: periodShifts.reduce((a, s) => a + (s.lotBesarMap?.[p] ?? 0), 0),
-  }));
-
-  const gentaniRows = gentaniUsage(closedInPeriod, settings);
-  const gentaniActive = gentaniRows.filter(r => r.status !== 'off');
-  const gentaniOver = gentaniActive.filter(r => r.status === 'over');
-  const gentaniWarn = gentaniActive.filter(r => r.status === 'warn');
-  const gentaniOff = gentaniRows.filter(r => r.status === 'off').map(r => r.material);
+  const d = buildDashboard(shifts, settings, period, todayStr());
+  const { kpis, activeShift } = d;
   const ambang = settings.ambangWaspada ?? 90;
-
-  const todayBons = shifts.filter(s => s.tanggal === todayStr && s.shift === bonShift);
-  const bonTotalToday = todayBons.reduce(
-    (a, s) => a + s.bonLines.reduce((x, l) => x + effBonFinal(l), 0), 0,
-  );
-
-  const recent = shifts.slice(0, 5);
-
-  // stok di meja: shift terbuka = sisa + bon; tanpa shift terbuka = sisa akhir shift terakhir
+  const periodLabel = period === 1 ? 'kemarin' : `${period} hari sebelumnya`;
+  const hasData = shifts.length > 0;
   const lastClosed = db.getLastClosed();
+
+  // 3D: shift Open = sisa + bon (mode saved); tanpa shift Open = sisa akhir shift Closed terakhir
   const stockLines = activeShift
     ? activeShift.bonLines
-    : allMats.map(material => ({
-        material, totalTepat: 0, bonFinal: 0, bonFinalOverride: null,
-        sisaStok: (lastClosed?.bonLines ?? []).filter(l => l.material === material).reduce((a, l) => a + (l.sisaAkhir ?? 0), 0),
-      }));
+    : d.stock.map(r => ({ material: r.material, totalTepat: 0, bonFinal: 0, bonFinalOverride: null, sisaStok: r.stok }));
 
-  useEffect(() => {
-    const allShifts = db.getShifts();
-    const co = new Date();
-    co.setDate(co.getDate() - (period - 1));
-    const coStr = co.toISOString().slice(0, 10);
-    const pShifts = allShifts.filter(s => (s.tanggal ?? '') >= coStr);
-    const pClosed = pShifts.filter(s => s.status === 'Closed');
-
-    const localMats = getAllMaterials(db.getSettings());
-    const localPem = Object.fromEntries(localMats.map(m => [m, 0]));
-    for (const s of pClosed) {
-      for (const l of s.bonLines) {
-        if (l.pemakaianAktual !== null && l.pemakaianAktual !== undefined) {
-          localPem[l.material] = (localPem[l.material] ?? 0) + l.pemakaianAktual;
-        }
-      }
-    }
-
-    barInst.current?.destroy();
-    barInst.current = new Chart(barRef.current, {
-      type: 'bar',
-      data: {
-        labels: localMats,
-        datasets: [{
-          label: 'Pemakaian (kg)',
-          data: localMats.map(m => localPem[m] ?? 0),
-          backgroundColor: '#F0A32A',
-          hoverBackgroundColor: '#FFB84D',
-          borderRadius: 2,
-          maxBarThickness: 34,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 500, easing: 'easeOutQuart' },
-        plugins: { legend: { display: false }, tooltip: TOOLTIP },
-        scales: {
-          y: {
-            type: 'logarithmic',
-            grid: { color: GRID_COLOR },
-            border: { display: false },
-            afterBuildTicks: logTicks,
-            ticks: { color: TICK_COLOR, font: { size: 10 }, callback: v => (v >= 1000 ? `${v / 1000}k` : v) },
-          },
-          x: {
-            grid: { display: false },
-            border: { display: false },
-            ticks: { color: TICK_COLOR, font: { size: 10 }, maxRotation: 32, minRotation: 0, autoSkip: false },
-          },
-        },
-      },
-    });
-
-    const localProd = Object.fromEntries(PRODUCTS.map(p => [p, 0]));
-    for (const s of pShifts) for (const p of PRODUCTS) localProd[p] += s.lotBesarMap?.[p] ?? 0;
-
-    donutInst.current?.destroy();
-    donutInst.current = new Chart(donutRef.current, {
-      type: 'doughnut',
-      data: {
-        labels: PRODUCTS,
-        datasets: [{
-          data: PRODUCTS.map(p => localProd[p]),
-          backgroundColor: DONUT_COLORS,
-          borderColor: '#111518',
-          borderWidth: 3,
-          hoverOffset: 3,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        cutout: '72%',
-        animation: { duration: 550, easing: 'easeOutQuart' },
-        plugins: { legend: { display: false }, tooltip: TOOLTIP },
-      },
-    });
-
-    const localSorted = localMats
-      .map(m => ({ name: m, value: localPem[m] ?? 0 }))
-      .filter(m => m.value > 0)
-      .sort((a, b) => b.value - a.value);
-
-    const totalPem = localSorted.reduce((sum, m) => sum + m.value, 0);
-    let cumulative = 0;
-    const paretoLine = localSorted.map(m => {
-      cumulative += m.value;
-      return totalPem > 0 ? (cumulative / totalPem) * 100 : 0;
-    });
-
-    paretoInst.current?.destroy();
-    paretoInst.current = new Chart(paretoRef.current, {
-      type: 'bar',
-      data: {
-        labels: localSorted.length ? localSorted.map(m => m.name) : ['Belum ada data'],
-        datasets: localSorted.length ? [
-          {
-            type: 'line',
-            label: 'Kumulatif (%)',
-            data: paretoLine,
-            borderColor: '#E2574C',
-            backgroundColor: '#E2574C',
-            yAxisID: 'y1',
-            tension: 0.2,
-            pointRadius: 2,
-            pointHoverRadius: 4,
-            borderWidth: 2,
-          },
-          {
-            type: 'bar',
-            label: 'Pemakaian (kg)',
-            data: localSorted.map(m => m.value),
-            backgroundColor: 'rgba(240,163,42,0.72)',
-            hoverBackgroundColor: '#F0A32A',
-            borderRadius: 2,
-            yAxisID: 'y',
-            maxBarThickness: 28,
-          },
-        ] : [],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 500, easing: 'easeOutQuart' },
-        plugins: {
-          legend: {
-            display: true, position: 'bottom',
-            labels: { color: TICK_COLOR, boxWidth: 8, boxHeight: 8, padding: 14, font: { size: 10 } },
-          },
-          tooltip: TOOLTIP,
-        },
-        scales: {
-          y: {
-            type: 'logarithmic', position: 'left',
-            grid: { color: GRID_COLOR }, border: { display: false },
-            afterBuildTicks: logTicks,
-            ticks: { color: TICK_COLOR, font: { size: 10 }, callback: v => (v >= 1000 ? `${v / 1000}k` : v) },
-          },
-          y1: {
-            type: 'linear', position: 'right', max: 100, min: 0,
-            grid: { display: false }, border: { display: false },
-            ticks: { color: TICK_COLOR, font: { size: 10 }, callback: v => `${v}%` },
-          },
-          x: {
-            grid: { display: false }, border: { display: false },
-            ticks: { color: TICK_COLOR, font: { size: 10 }, maxRotation: 32, minRotation: 0, autoSkip: false },
-          },
-        },
-      },
-    });
-
-    return () => {
-      barInst.current?.destroy();
-      donutInst.current?.destroy();
-      paretoInst.current?.destroy();
-    };
-  }, [period]);
-
-  useEffect(() => {
-    const allShifts = db.getShifts();
-    const today = new Date().toISOString().slice(0, 10);
-    const todaySelected = allShifts.filter(s => s.tanggal === today && s.shift === bonShift);
-
-    const localMats = getAllMaterials(db.getSettings());
-    const matBon = Object.fromEntries(localMats.map(m => [m, 0]));
-    for (const s of todaySelected) {
-      for (const l of s.bonLines) {
-        matBon[l.material] = (matBon[l.material] ?? 0) + effBonFinal(l);
-      }
-    }
-
-    bonInst.current?.destroy();
-    bonInst.current = new Chart(bonRef.current, {
-      type: 'bar',
-      data: {
-        labels: localMats,
-        datasets: [{
-          label: 'Bon Final (kg)',
-          data: localMats.map(m => matBon[m] ?? 0),
-          backgroundColor: bonShift === 'Red' ? 'rgba(226,87,76,0.8)' : 'rgba(164,139,224,0.8)',
-          hoverBackgroundColor: bonShift === 'Red' ? '#E2574C' : '#A48BE0',
-          borderRadius: 2,
-          maxBarThickness: 26,
-        }],
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        animation: { duration: 450, easing: 'easeOutQuart' },
-        plugins: { legend: { display: false }, tooltip: TOOLTIP },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: { color: GRID_COLOR }, border: { display: false },
-            ticks: { color: TICK_COLOR, font: { size: 10 } },
-          },
-          x: {
-            grid: { display: false }, border: { display: false },
-            ticks: { color: TICK_COLOR, font: { size: 10 }, maxRotation: 32, minRotation: 0, autoSkip: false },
-          },
-        },
-      },
-    });
-
-    return () => { bonInst.current?.destroy(); };
-  }, [bonShift]);
-
-  const gentaniTone = gentaniOver.length > 0
-    ? 'border-danger/30 bg-danger/10 text-danger'
-    : gentaniWarn.length > 0
-      ? 'border-signal/30 bg-signal/10 text-signal'
-      : gentaniActive.length > 0
-        ? 'border-success/30 bg-success/10 text-success'
-        : 'border-white/10 bg-white/[0.03] text-steel-dim';
-  const gentaniLabel = gentaniOver.length > 0
-    ? `${gentaniOver.length} over`
-    : gentaniWarn.length > 0
-      ? `${gentaniWarn.length} waspada`
-      : gentaniActive.length > 0
-        ? 'Aman'
-        : 'Belum aktif';
+  const stockShown = showAllStock ? d.stock : d.stock.slice(0, 6);
+  const unsetCount = d.stock.filter(r => r.status === 'unset').length;
+  const lotTotal = kpis.lot.value;
 
   return (
     <div className="mx-auto max-w-[1480px] p-4 md:p-7">
       <div className="page-head">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="page-sub">
-            {now.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
-            <span className="mx-2 text-steel-faint">·</span>
-            {activeShift ? `Shift ${activeShift.shift} masih terbuka` : 'Semua shift tertutup'}
-          </p>
+          <div className="page-sub flex flex-wrap items-center gap-2">
+            <span>{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-[3px] border border-white/[0.14] px-2 py-0.5 text-[11px] font-semibold text-paper">
+              <span className={`h-1.5 w-1.5 rounded-full ${activeShift ? 'bg-success' : 'bg-steel-faint'}`} />
+              {activeShift ? `Shift ${activeShift.shift} · Open${activeShift.waktu ? ` · ${activeShift.waktu}` : ''}` : 'Semua shift tertutup'}
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="segmented" role="group" aria-label="Rentang waktu">
-            {[1, 7, 30].map(d => (
-              <button
-                key={d}
-                type="button"
-                className="seg-btn"
-                data-active={period === d}
-                onClick={() => setPeriod(d)}
-              >
-                {d === 1 ? '1 Hari' : `${d} Hari`}
+            {[1, 7, 30].map(n => (
+              <button key={n} type="button" className="seg-btn" data-active={period === n} aria-pressed={period === n} onClick={() => setPeriod(n)}>
+                {n} Hari
               </button>
             ))}
           </div>
+          {activeShift ? (
+            <button className="btn btn-primary btn-sm" onClick={() => { setCurrentBonId(activeShift.id); navigate('tutup-shift'); }}>
+              Tutup Shift {activeShift.shift}<ArrowRight size={14} />
+            </button>
+          ) : (
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('planning')}>
+              <Plus size={14} />Buat Bon
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="bento">
-        <section className="tile md:col-span-12">
-          <TileHead
-            label="Stok Meja Inokulasi"
-            meta={activeShift
-              ? `Shift ${activeShift.shift} ${formatDate(activeShift.tanggal)} · sisa + bon`
-              : lastClosed ? `Sisa akhir shift ${lastClosed.shift} ${formatDate(lastClosed.tanggal)}` : 'Belum ada data stok'}
-          />
-          <div className="tile-body">
-            <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
-              <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
-            </Suspense>
+      <div className="flex flex-col gap-3">
+        {hasData && (d.attention.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-[5px] border border-danger/30 bg-danger/[0.07] px-3 py-2.5 text-xs text-paper" role="status">
+            <span className="mr-1 font-bold">{d.attention.length} perlu tindakan</span>
+            {d.attention.slice(0, 5).map(a => {
+              const Icon = a.level === 'crit' ? TriangleAlert : CircleAlert;
+              return (
+                <span key={a.text} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-white/[0.14] bg-iron-850 px-2 py-1 text-[11px] font-semibold">
+                  <Icon size={12} className={a.level === 'crit' ? 'text-danger' : 'text-signal'} />{a.text}
+                </span>
+              );
+            })}
+            {d.attention.length > 5 && <span className="text-[11px] text-steel">+{d.attention.length - 5} lainnya</span>}
           </div>
-        </section>
-
-        <section className="tile md:col-span-8 md:row-span-2">
-          <TileHead label="Pemakaian Material" meta={`${closedInPeriod.length} shift tertutup · skala log`}>
-            <div className="text-right">
-              <div className="readout text-3xl">{fmtNum(usageTotal)}</div>
-              <div className="tile-meta mt-1">kg / {periodLabel}</div>
-            </div>
-          </TileHead>
-          <div className="tile-body">
-            <div className="relative h-[280px] md:h-[330px]">
-              <canvas ref={barRef} />
-              {!hasUsage && <TileEmpty>Belum ada pemakaian aktual pada rentang ini.</TileEmpty>}
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/[0.06] pt-3 text-[11px] text-steel-faint">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-signal" />
-                Pemakaian aktual
-              </span>
-              <span>{allMats.length} material dipantau</span>
-              <span className="ml-auto">Satuan kilogram</span>
-            </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-[5px] border border-white/[0.08] bg-iron-850/60 px-3 py-2 text-xs text-steel" role="status">
+            <CircleCheck size={14} className="shrink-0 text-success" />Semua aman: tidak ada stok di bawah minimum atau gentani di atas {ambang}%.
           </div>
-        </section>
+        ))}
 
-        <section className="tile flex flex-col md:col-span-4 md:row-span-2">
-          <TileHead label="Status Gentani" meta="Pemakaian vs batas">
-            <span className={`chip border ${gentaniTone}`}>{gentaniLabel}</span>
-          </TileHead>
-          <div className="tile-body flex-1">
-            {gentaniOver.length > 0 && (
-              <div className="alert alert-danger !mb-2 !p-2.5 text-xs">
-                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                <span><strong>{gentaniOver.length} material</strong> melewati batas gentani.</span>
-              </div>
-            )}
-            {gentaniWarn.length > 0 && (
-              <div className="alert alert-warning !mb-2 !p-2.5 text-xs">
-                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                <span><strong>{gentaniWarn.length} material</strong> mendekati batas (≥ {ambang}%).</span>
-              </div>
-            )}
-            {gentaniActive.length === 0 ? (
-              <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 px-4 text-center">
-                <Database size={18} className="text-steel-faint" />
-                <p className="text-xs leading-relaxed text-steel-faint">
-                  Belum ada data gentani. Gentani dihitung otomatis — tutup shift dengan pemakaian aktual.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/[0.05] md:max-h-[330px] md:overflow-y-auto md:pr-1">
-                {gentaniActive.map(r => {
-                  const pct = r.pct ?? 0;
-                  const tone = r.status === 'over' ? 'bg-danger' : r.status === 'warn' ? 'bg-signal' : 'bg-success';
-                  const textTone = r.status === 'over' ? 'text-danger' : r.status === 'warn' ? 'text-signal' : 'text-success';
-                  return (
-                    <div key={r.material} className="py-2.5 first:pt-0 last:pb-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="flex min-w-0 items-center gap-2">
-                          <MaterialIcon material={r.material} />
-                          <span className="truncate text-[13px] font-semibold text-paper">{r.material}</span>
-                        </span>
-                        <span className={`shrink-0 text-[11px] font-bold tabular-nums ${textTone}`}>{pct.toFixed(0)}%</span>
-                      </div>
-                      <div className="relative mt-1.5">
-                        <div className="meter">
-                          <div className={`meter-fill ${tone}`} style={{ width: `${Math.min(100, pct)}%` }} />
-                        </div>
-                        <div
-                          className="pointer-events-none absolute inset-y-0 border-l border-dashed border-white/25"
-                          style={{ left: `${Math.min(100, ambang)}%` }}
-                        />
-                      </div>
-                      <div className="mt-1 flex justify-between gap-2 text-[10px] tabular-nums text-steel-faint">
-                        <span>{fmtNum(r.pemakaian)} kg terpakai</span>
-                        <span>batas {fmtNum(r.batas)} kg</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {gentaniOff.length > 0 && (
-              <p className="mt-3 border-t border-white/[0.06] pt-3 text-[10px] leading-relaxed text-steel-faint">
-                Belum aktif: {gentaniOff.join(', ')}
-              </p>
-            )}
-          </div>
-        </section>
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[5px] border border-white/[0.08] bg-white/[0.08] lg:grid-cols-4">
+          <Kpi label="Pemakaian" value={fmtNum(kpis.usage.value)} unit="kg" foot={<Delta value={kpis.usage.delta} label={periodLabel} />}>
+            <Spark values={d.daily.map(x => x.total)} />
+          </Kpi>
+          <Kpi label="Bon" value={kpis.bon.value} foot={`${kpis.bon.closed} closed · ${kpis.bon.open} open`}>
+            <Mix parts={[{ key: 'Closed', value: kpis.bon.closed, color: C.dim }, { key: 'Open', value: kpis.bon.open, color: C.paper }]} />
+          </Kpi>
+          <Kpi label="Lot besar" value={fmtNum(lotTotal)} foot={<Delta value={kpis.lot.delta} label={periodLabel} />}>
+            <Mix parts={d.productMix.map(x => ({ key: x.p, value: x.value, color: PRODUCT_TONES[x.p].color }))} />
+          </Kpi>
+          <Kpi
+            label="Gentani dalam batas"
+            value={kpis.gentani.active ? kpis.gentani.ok : '—'}
+            unit={kpis.gentani.active ? `/ ${kpis.gentani.active} material` : null}
+            foot={kpis.gentani.active ? `${kpis.gentani.warn} waspada · ${kpis.gentani.over} over` : 'tutup shift dengan pemakaian aktual'}
+          >
+            <Mix parts={[
+              { key: 'Aman', value: kpis.gentani.ok, color: C.dim },
+              { key: 'Waspada', value: kpis.gentani.warn, color: '#F0A32A' },
+              { key: 'Over', value: kpis.gentani.over, color: '#E2574C' },
+            ]} />
+          </Kpi>
+        </div>
 
-        <section className="tile md:col-span-3">
-          <TileHead label="Bon Periode" meta={periodLabel} />
-          <div className="tile-body pt-4">
-            <div className="flex items-end justify-between gap-3">
-              <div className="readout text-4xl">{periodShifts.length}</div>
-              <div className="text-right text-[11px] leading-tight text-steel-faint">
-                <div><span className="font-semibold text-success">{closedInPeriod.length}</span> selesai</div>
-                <div><span className="font-semibold text-signal">{openCount}</span> open</div>
-              </div>
-            </div>
-            <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-              <div className="bg-success" style={{ width: `${periodShifts.length ? (closedInPeriod.length / periodShifts.length) * 100 : 0}%` }} />
-              <div className="bg-signal" style={{ width: `${periodShifts.length ? (openCount / periodShifts.length) * 100 : 0}%` }} />
-            </div>
-          </div>
-        </section>
-
-        <section className="tile md:col-span-3">
-          <TileHead label="Lot Besar" meta={periodLabel} />
-          <div className="tile-body pt-4">
-            <div className="flex items-end justify-between gap-3">
-              <div className="readout text-4xl">{fmtNum(totalLB)}</div>
-              <div className="text-[11px] text-steel-faint">lot</div>
-            </div>
-            <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-              {prodTotals.map(x => (
-                <div
-                  key={x.p}
-                  style={{ width: `${totalLB ? (x.value / totalLB) * 100 : 0}%`, backgroundColor: PRODUCT_TONES[x.p].color }}
-                  title={`${x.p}: ${x.value}`}
-                />
-              ))}
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
-              {prodTotals.map(x => (
-                <div key={x.p} className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="inline-flex items-center gap-1.5 text-steel-dim">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[x.p].color }} />
-                    {x.p}
-                  </span>
-                  <span className="font-semibold tabular-nums text-paper">{x.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="tile md:col-span-3">
-          <TileHead label="Distribusi Shift" meta={periodLabel} />
-          <div className="tile-body pt-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-danger">Red</div>
-                <div className="readout mt-1 text-4xl">{redCount}</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#A48BE0]">White</div>
-                <div className="readout mt-1 text-4xl">{whiteCount}</div>
-              </div>
-            </div>
-            <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-              <div className="bg-danger" style={{ width: `${periodShifts.length ? (redCount / periodShifts.length) * 100 : 0}%` }} />
-              <div className="bg-[#A48BE0]" style={{ width: `${periodShifts.length ? (whiteCount / periodShifts.length) * 100 : 0}%` }} />
-            </div>
-          </div>
-        </section>
-
-        <section className="tile md:col-span-3">
-          <TileHead label="Aksi Cepat" meta="Alur shift" />
-          <div className="tile-body pt-3">
-            <div className="flex flex-col gap-2">
-              <button className="btn btn-primary btn-sm justify-between" onClick={() => navigate('planning')}>
-                <span className="inline-flex items-center gap-2"><Plus size={14} />Buat Bon</span>
-                <ArrowRight size={14} />
-              </button>
-              {activeShift && (
-                <button
-                  className="btn btn-warning btn-sm justify-between"
-                  onClick={() => { setCurrentBonId(activeShift.id); navigate('tutup-shift'); }}
-                >
-                  <span className="inline-flex items-center gap-2"><Package size={14} />Tutup Shift</span>
-                  <ArrowRight size={14} />
-                </button>
+        <div className="bento">
+          <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-8'}`}>
+            <TileHead
+              label="Stok material"
+              meta={activeShift
+                ? `Shift ${activeShift.shift} ${formatDate(activeShift.tanggal)} · sisa + bon · urut dari paling kritis`
+                : lastClosed ? `Sisa akhir shift ${lastClosed.shift} ${formatDate(lastClosed.tanggal)} · urut dari paling kritis` : 'Belum ada data stok'}
+            />
+            <div className="tile-body">
+              {!hasData ? (
+                <Empty action={<button className="btn btn-outline btn-sm" onClick={() => navigate('planning')}><Plus size={13} />Buat Bon</button>}>
+                  Stok per material muncul setelah bon pertama dibuat.
+                </Empty>
+              ) : (
+                <>
+                  <div className="hidden grid-cols-[28px_minmax(110px,1.1fr)_minmax(120px,2fr)_76px_92px] gap-x-3 pb-2 font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-steel-faint sm:grid">
+                    <span /><span>Material</span><span>Stok vs kapasitas · ┃ minimum</span><span className="text-right">Stok</span><span className="text-right">Cukup untuk</span>
+                  </div>
+                  {stockShown.map(r => <StockRow key={r.material} r={r} />)}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
+                    {d.stock.length > 6 ? (
+                      <button className="btn btn-ghost btn-xs" onClick={() => setShowAllStock(v => !v)}>
+                        {showAllStock ? <>Tampilkan 6 teratas<ChevronUp size={12} /></> : <>Tampilkan {d.stock.length - 6} material lainnya<ChevronDown size={12} /></>}
+                      </button>
+                    ) : <span />}
+                    {unsetCount > 0 && (
+                      <button className="btn btn-ghost btn-xs" onClick={() => navigate('settings')}>
+                        {unsetCount} material belum punya stok minimum · Atur<ChevronRight size={12} />
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
-              <button className="btn btn-outline btn-sm justify-between" onClick={() => navigate('riwayat')}>
-                <span className="inline-flex items-center gap-2"><ClipboardList size={14} />Riwayat Bon</span>
-                <ChevronRight size={14} />
-              </button>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="tile md:col-span-7">
-          <TileHead label="Dominasi Material" meta={`Kumulatif · ${sortedMats.length} material`}>
-            {topShare > 0 && <span className="chip text-signal">Top {topShare.toFixed(0)}%</span>}
-          </TileHead>
-          <div className="tile-body">
-            <div className="relative h-[240px]">
-              <canvas ref={paretoRef} />
-              {!hasUsage && <TileEmpty>Belum ada data untuk diagram Pareto.</TileEmpty>}
-            </div>
-          </div>
-        </section>
-
-        <section className="tile md:col-span-5">
-          <TileHead label="Pengebonan Hari Ini" meta={`Shift ${bonShift}`}>
-            <div className="segmented">
-              {['Red', 'White'].map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  className="seg-btn"
-                  data-active={bonShift === s}
-                  onClick={() => setBonShift(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </TileHead>
-          <div className="tile-body">
-            <div className="flex items-end justify-between gap-3">
-              <div className="readout text-3xl">
-                {fmtNum(bonTotalToday)}
-                <span className="ml-1 text-sm font-medium text-steel-faint">kg</span>
-              </div>
-              <div className="tile-meta">{todayBons.length} bon</div>
-            </div>
-            <div className="relative mt-3 h-[180px]">
-              <canvas ref={bonRef} />
-              {todayBons.length === 0 && <TileEmpty>Tidak ada bon hari ini untuk Shift {bonShift}.</TileEmpty>}
-            </div>
-          </div>
-        </section>
-
-        <section className="tile md:col-span-5">
-          <TileHead label="Distribusi Produksi" meta={`${fmtNum(totalLB)} lot besar`} />
-          <div className="tile-body">
-            <div className="relative h-[210px]">
-              <canvas ref={donutRef} />
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="readout text-4xl">{fmtNum(totalLB)}</span>
-                <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-steel-faint">Lot besar</span>
-              </div>
-              {totalLB === 0 && <TileEmpty>Belum ada lot besar pada rentang ini.</TileEmpty>}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-white/[0.06] pt-3">
-              {prodTotals.map(x => (
-                <div key={x.p} className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="inline-flex items-center gap-1.5 text-steel-dim">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[x.p].color }} />
-                    {x.p}
-                  </span>
-                  <span className="font-semibold tabular-nums text-paper">
-                    {x.value}{totalLB > 0 ? ` · ${Math.round((x.value / totalLB) * 100)}%` : ''}
-                  </span>
+          <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-4'}`}>
+            <TileHead label="Meja inokulasi" meta="Tampilan 3D stok per kompartemen">
+              {show3d && <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(false)}>Tutup 3D</button>}
+            </TileHead>
+            <div className="tile-body">
+              {show3d ? (
+                <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+                  <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
+                </Suspense>
+              ) : (
+                <div className="well flex aspect-[4/3] flex-col items-center justify-center gap-2 text-center">
+                  <Box size={22} className="text-steel-dim" />
+                  <div className="font-display text-[13px] font-semibold text-steel">Meja Inokulasi 3D</div>
+                  <p className="max-w-[220px] text-[11px] leading-relaxed text-steel-faint">Model 3D baru dimuat saat dibuka supaya dashboard tetap cepat.</p>
+                  <button className="btn btn-outline btn-sm mt-1" onClick={() => setShow3d(true)}>Buka 3D</button>
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="tile md:col-span-7">
-          <TileHead label="Aktivitas Shift" meta="5 terakhir">
-            <button className="btn btn-ghost btn-xs" onClick={() => navigate('riwayat')}>
-              Semua <ChevronRight size={12} />
-            </button>
-          </TileHead>
-          <div className="tile-body">
-            {recent.length === 0 ? (
-              <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 text-center">
-                <Database size={18} className="text-steel-faint" />
-                <p className="text-xs text-steel-faint">Belum ada aktivitas. Mulai dengan membuat bon pertama.</p>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('planning')}>
-                  <Plus size={13} />Buat Bon
-                </button>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/[0.05]">
-                {recent.map(s => {
-                  const lots = PRODUCTS
-                    .filter(p => (s.lotBesarMap?.[p] ?? 0) > 0)
-                    .map(p => `${p}:${s.lotBesarMap[p]}`)
-                    .join(' · ');
-                  return (
-                    <div key={s.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <strong className="text-[13px] font-semibold text-paper">{formatDate(s.tanggal)}</strong>
-                          <span className={`badge badge-${s.shift === 'Red' ? 'red' : 'white'}`}>Shift {s.shift}</span>
-                          {s.waktu && <span className="text-[11px] text-steel-faint">{s.waktu}</span>}
-                        </div>
-                        <div className="mt-1 truncate text-[11px] text-steel-faint">{lots || 'Tidak ada lot tercatat'}</div>
-                      </div>
-                      <span className={`badge badge-${s.status === 'Open' ? 'open' : 'closed'} shrink-0`}>{s.status}</span>
+          <section className="tile md:col-span-7">
+            <TileHead label="Pemakaian vs gentani" meta={`% dari batas · ┃ ${ambang}% waspada · ┃ 100% batas`} />
+            <div className="tile-body">
+              {d.gentani.length === 0 ? (
+                <Empty>Belum ada data gentani pada rentang ini. Gentani dihitung saat shift ditutup dengan pemakaian aktual.</Empty>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {d.gentani.map(r => <GentaniRow key={r.material} r={r} ambang={ambang} />)}
+                  <div className="grid grid-cols-[minmax(84px,120px)_minmax(0,1fr)_48px] gap-2.5 text-[10px] text-steel-faint">
+                    <span />
+                    <div className="relative h-3">
+                      <span className="absolute left-0">0%</span>
+                      {[50, ambang].map(v => <span key={v} className="absolute -translate-x-1/2" style={{ left: pctOf(v, 120) }}>{v}%</span>)}
+                      <span className="absolute pl-1" style={{ left: pctOf(100, 120) }}>100%</span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
+                    <span />
+                  </div>
+                </div>
+              )}
+              {d.gentaniOff.length > 0 && (
+                <p className="mt-3 border-t border-white/[0.06] pt-3 text-[10px] leading-relaxed text-steel-faint">
+                  Belum ada data: {d.gentaniOff.join(', ')}
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="tile md:col-span-5">
+            <TileHead label="Pemakaian harian" meta={`kg · ${d.daily.length} hari terakhir`} />
+            <div className="tile-body"><Trend daily={d.daily} /></div>
+          </section>
+
+          <section className="tile md:col-span-5">
+            <TileHead label="Mix produksi" meta={`${fmtNum(lotTotal)} lot besar`} />
+            <div className="tile-body">
+              {lotTotal === 0 ? (
+                <Empty>Belum ada lot besar pada rentang ini.</Empty>
+              ) : (
+                <>
+                  <div className="flex h-2.5 gap-0.5">
+                    {d.productMix.filter(x => x.value > 0).map(x => (
+                      <i key={x.p} className="rounded-[2px]" style={{ flex: x.value, backgroundColor: PRODUCT_TONES[x.p].color }} title={`${x.p}: ${x.value} lot`} />
+                    ))}
+                  </div>
+                  <div className="mt-4 grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
+                    {d.productMix.map(x => (
+                      <div key={x.p} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="inline-flex items-center gap-2 text-steel">
+                          <span className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: PRODUCT_TONES[x.p].color }} />{x.p}
+                        </span>
+                        <span className="readout text-xs">{x.value} · {Math.round((x.value / lotTotal) * 100)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="tile md:col-span-7">
+            <TileHead label="Aktivitas shift" meta="5 terakhir">
+              <button className="btn btn-ghost btn-xs" onClick={() => navigate('riwayat')}>Semua<ChevronRight size={12} /></button>
+            </TileHead>
+            <div className="tile-body">
+              {d.recent.length === 0 ? (
+                <Empty>Belum ada aktivitas. Riwayat shift muncul di sini setelah bon pertama dibuat.</Empty>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] text-xs">
+                    <thead>
+                      <tr className="text-left font-display text-[9px] uppercase tracking-[0.16em] text-steel-faint">
+                        <th className="pb-2 pr-3 font-semibold">Tanggal</th>
+                        <th className="pb-2 pr-3 font-semibold">Shift</th>
+                        <th className="pb-2 pr-3 font-semibold">Lot besar</th>
+                        <th className="pb-2 pr-3 text-right font-semibold">Bon (kg)</th>
+                        <th className="pb-2 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.recent.map(s => (
+                        <tr key={s.id} className="border-t border-white/[0.05]">
+                          <td className="py-2.5 pr-3 font-semibold text-paper">{formatDate(s.tanggal)}</td>
+                          <td className="py-2.5 pr-3">
+                            <span className="rounded-[3px] border border-white/[0.15] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.08em] text-paper">{s.shift}</span>
+                          </td>
+                          <td className="py-2.5 pr-3 text-steel">
+                            {PRODUCTS.filter(p => (s.lotBesarMap?.[p] ?? 0) > 0).map(p => `${p} ${s.lotBesarMap[p]}`).join(' · ') || '—'}
+                          </td>
+                          <td className="py-2.5 pr-3 text-right tabular-nums text-paper">{fmtNum(s.bonKg)}</td>
+                          <td className="py-2.5">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-paper">
+                              <span className={`h-1.5 w-1.5 rounded-full ${s.status === 'Open' ? 'bg-signal' : 'bg-steel-faint'}`} />{s.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

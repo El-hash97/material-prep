@@ -34,7 +34,7 @@ Dark industrial control panel. Permukaan besi gelap, tipografi rapat, angka besa
 | `success` | `#4DBE8A` | aman, selesai |
 | `info` | `#6E9FE8` | informasi |
 
-Warna produk: 2TR `#6E9FE8`, 1TR `#E2574C`, KAI `#F0A32A`, CRANK `#4DBE8A`, dengan versi `soft` rgba 0.16 untuk latar.
+Warna produk (kategorikal, tervalidasi CVD di `#111518`, urutan tetap): 2TR `#3987E5`, 1TR `#D55181`, KAI `#9085E9`, CRANK `#199E70`, dengan versi `soft` rgba 0.16 untuk latar. Tidak memakai hue status; jangan ubah tanpa menjalankan validator palet.
 
 ### Tipografi
 
@@ -53,7 +53,7 @@ Warna produk: 2TR `#6E9FE8`, 1TR `#E2574C`, KAI `#F0A32A`, CRANK `#4DBE8A`, deng
 ## Layout
 
 - `.bento`: 1 kolom di mobile, 12 kolom di `md`.
-- Dashboard: grafik 8 kolom, status gentani 4 kolom; empat metrik 3 kolom; pareto 7, pengebonan 5; donut 5, aktivitas 7.
+- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → stok material 8 + meja 3D 4 (dimuat saat diklik) → gentani 7 + tren harian 5 → mix produksi 5 + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
 - Planning: info shift 4, input lot 8; sisa stok 5, visualisasi 7; tabel 12.
 - Riwayat: filter 8, ringkasan 4; setiap bon 12.
 - Pengaturan: rasio 5, ringkasan 7; kebutuhan material 12; ukuran karung 6, stok minimum 6; gentani 12.
@@ -69,7 +69,7 @@ Warna produk: 2TR `#6E9FE8`, 1TR `#E2574C`, KAI `#F0A32A`, CRANK `#4DBE8A`, deng
 - Form: `form-control` gelap dengan fokus amber; `form-label` uppercase.
 - Tabel: `data-table` + `table-header` + `table-row` + `table-foot`; angka rata kanan.
 - `alert-*` untuk pesan; `meter` untuk gentani; `well` untuk blok dalam tile.
-- Chart.js: batang amber, garis pareto merah, donut warna produk, grid `rgba(255,255,255,0.055)`, skala log dengan tick pangkat 10 saja.
+- Visualisasi: satu sumbu y linear; tanpa skala log, sumbu ganda, atau donut. Data biasa abu baja, sorotan `paper`; merah/amber/hijau hanya untuk status (selalu dengan ikon + teks). Bar status (stok, gentani) memakai HTML/CSS; Chart.js hanya untuk tren harian. Grid `rgba(255,255,255,0.055)`.
 
 ## Gerak
 
