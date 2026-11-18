@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', optimizeDeps: { noDiscovery: true } });
-const { buildDashboard, addDays, deltaPct, planSummary } = await vite.ssrLoadModule('/src/lib/dashboard.js');
+const { buildDashboard, addDays, deltaPct, planSummary, bonToday } = await vite.ssrLoadModule('/src/lib/dashboard.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
 const { karungOf, karungKeMinimum, tengahShift } = await vite.ssrLoadModule('/src/lib/calc.js');
 
@@ -106,6 +106,24 @@ assert.equal(plan.materials, 2);
 assert.deepEqual(plan.tengah, { at: '2026-11-18T05:00:00.000Z', dicatat: 1, total: 3 });
 assert.equal(planSummary(null, settings), null);
 assert.equal(buildDashboard([planShift, ...shifts], settings, 7, today).plan.id, 'p1');
+
+// Pengebonan hari ini: 2 bon (terbaru di depan di db), LMC dari keduanya, Sn hanya bon pagi; 0 kg dilewati.
+const bt = bonToday([
+  { id: 'w', tanggal: today, shift: 'White', status: 'Open', bonLines: [
+    { material: 'LMC', bonFinal: 50, bonFinalOverride: null, ukuranKarung: 25 },
+    { material: 'Sn', bonFinal: 0, bonFinalOverride: null, ukuranKarung: 50 },
+  ] },
+  { id: 'r', tanggal: today, shift: 'Red', status: 'Closed', bonLines: [
+    { material: 'LMC', bonFinal: 100, bonFinalOverride: 125, ukuranKarung: 25 },
+    { material: 'Sn', bonFinal: 60, bonFinalOverride: null, ukuranKarung: 50 },
+  ] },
+  { id: 'kemarin', tanggal: addDays(today, -1), shift: 'White', status: 'Closed', bonLines: [{ material: 'LMC', bonFinal: 999, bonFinalOverride: null, ukuranKarung: 25 }] },
+], today);
+assert.deepEqual(bt.bons.map(b => [b.id, b.kg, b.karung]), [['r', 185, 7], ['w', 50, 2]]); // Sn 60 kg / 50 → 2 karung
+assert.deepEqual(bt.materials.map(m => [m.material, m.kg, m.karung]), [['LMC', 175, 7], ['Sn', 60, 2]]);
+assert.deepEqual(bt.materials[0].parts, [{ bon: 0, kg: 125, karung: 5 }, { bon: 1, kg: 50, karung: 2 }]);
+assert.deepEqual([bt.kg, bt.karung], [235, 9]);
+assert.deepEqual(bonToday([], today), { bons: [], materials: [], kg: 0, karung: 0 });
 
 // Animasi alur shift
 const { buildStory, beatAt, BEATS, LOOP, PALLET_MAX } = await vite.ssrLoadModule('/src/lib/story.js');

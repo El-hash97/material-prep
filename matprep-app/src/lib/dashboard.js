@@ -85,6 +85,34 @@ export function planSummary(shift, settings) {
   };
 }
 
+// Riwayat pengebonan hari ini: bon (urut waktu dibuat) dan total per material yang dipecah per bon.
+// kg = bon final efektif; karung = dibulatkan ke atas per ukuran karung tiap baris.
+export function bonToday(shifts, today) {
+  const bons = shifts.filter(s => s.tanggal === today).reverse(); // db: terbaru di depan → urut kronologis
+  const byMat = new Map();
+  const list = bons.map((s, i) => {
+    let kg = 0, karung = 0;
+    for (const l of s.bonLines ?? []) {
+      const v = effBonFinal(l);
+      if (!(v > 0)) continue;
+      const k = karungOf(v, l.ukuranKarung);
+      kg += v; karung += k;
+      if (!byMat.has(l.material)) byMat.set(l.material, { material: l.material, kg: 0, karung: 0, parts: [] });
+      const m = byMat.get(l.material);
+      m.kg += v; m.karung += k;
+      m.parts.push({ bon: i, kg: v, karung: k });
+    }
+    return { id: s.id, shift: s.shift, waktu: s.waktu ?? null, status: s.status, createdAt: s.createdAt ?? null, kg, karung };
+  });
+  const materials = [...byMat.values()].sort((a, b) => b.kg - a.kg);
+  return {
+    bons: list,
+    materials,
+    kg: list.reduce((a, b) => a + b.kg, 0),
+    karung: list.reduce((a, b) => a + b.karung, 0),
+  };
+}
+
 export function buildDashboard(shifts, settings, period, today) {
   const from = addDays(today, -(period - 1));
   const prevTo = addDays(from, -1);
@@ -135,6 +163,7 @@ export function buildDashboard(shifts, settings, period, today) {
     productMix,
     recent: shifts.slice(0, 5).map(s => ({ ...s, bonKg: s.bonLines.reduce((a, l) => a + effBonFinal(l), 0) })),
     activeShift: shifts.find(s => s.status === 'Open') ?? null,
+    bonToday: bonToday(shifts, today),
     plan: planSummary(shifts.find(s => s.status === 'Open') ?? shifts[0], settings),
   };
 }

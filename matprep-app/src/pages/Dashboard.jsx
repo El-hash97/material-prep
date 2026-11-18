@@ -226,6 +226,90 @@ function PlanTile({ plan, navigate }) {
   );
 }
 
+// Pengebonan hari ini per material (kg atau karung). Bar dipecah per bon (urut waktu) dengan celah 2px;
+// identitas material lewat foto karung. Warna segmen netral (bukan warna shift/status) + legenda di bawah.
+const BON_TONES = ['#B3BBBE', '#6F797D', '#ECE9E2', '#4A5459'];
+function BonTodayTile({ data, navigate }) {
+  const [unit, setUnit] = useState('kg');
+  const [all, setAll] = useState(false);
+  const kgMode = unit === 'kg';
+  const val = x => (kgMode ? x.kg : x.karung);
+  const max = Math.max(1, ...data.materials.map(val));
+  const shown = all ? data.materials : data.materials.slice(0, 6);
+  const bonLabel = b => `Shift ${b.shift}${b.waktu ? ` · ${b.waktu}` : ''}`;
+  return (
+    <section className="tile md:col-span-5">
+      <TileHead
+        label="Pengebonan hari ini"
+        meta={data.bons.length ? `${data.bons.length} bon · ${fmtNum(Math.round(data.kg))} kg · ${fmtNum(data.karung)} karung` : formatDate(todayStr())}
+      >
+        <div className="segmented" role="group" aria-label="Satuan pengebonan">
+          {[['kg', 'Kg'], ['karung', 'Karung']].map(([u, label]) => (
+            <button key={u} type="button" className="seg-btn" data-active={unit === u} aria-pressed={unit === u} onClick={() => setUnit(u)}>{label}</button>
+          ))}
+        </div>
+      </TileHead>
+      <div className="tile-body">
+        {data.bons.length === 0 ? (
+          <Empty action={<button className="btn btn-outline btn-sm" onClick={() => navigate('planning')}><Plus size={13} />Buat Bon</button>}>
+            Belum ada bon hari ini. Bon yang disimpan muncul di sini per material.
+          </Empty>
+        ) : (
+          <>
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {shown.map((m, i) => (
+                <li
+                  key={m.material}
+                  className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3"
+                  title={m.parts.map(p => `${bonLabel(data.bons[p.bon])}: ${fmtNum(Math.round(p.kg))} kg (${fmtNum(p.karung)} karung)`).join(' · ')}
+                >
+                  <MaterialIcon material={m.material} />
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-semibold text-paper">{m.material}</div>
+                    <div className="mt-1.5 flex h-2 gap-0.5 transition-[width] duration-500 ease-out" style={{ width: pctOf(val(m), max) }}>
+                      {m.parts.map(p => (
+                        <i key={p.bon} className="anim-grow rounded-[2px]" style={{ ...stagger(i), flex: Math.max(val(p), 0.0001), backgroundColor: BON_TONES[p.bon % BON_TONES.length] }} />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="readout text-[13px]">
+                      {fmtNum(kgMode ? Math.round(m.kg) : m.karung)}
+                      <span className="ml-0.5 text-[10px] font-medium text-steel-faint">{kgMode ? 'kg' : 'krg'}</span>
+                    </div>
+                    <div className="mt-0.5 text-[10px] tabular-nums text-steel-faint">{kgMode ? `${fmtNum(m.karung)} karung` : `${fmtNum(Math.round(m.kg))} kg`}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {data.materials.length > 6 && (
+              <button className="btn btn-ghost btn-xs mt-2" onClick={() => setAll(v => !v)}>
+                {all ? <>Tampilkan 6 teratas<ChevronUp size={12} /></> : <>Tampilkan {data.materials.length - 6} material lainnya<ChevronDown size={12} /></>}
+              </button>
+            )}
+            <ol className="m-0 mt-3 flex list-none flex-col gap-1.5 border-t border-white/[0.06] p-0 pt-3">
+              {data.bons.map((b, i) => (
+                <li key={b.id} className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="inline-flex min-w-0 items-center gap-2 text-steel">
+                    <span className="h-2 w-3 shrink-0 rounded-[2px]" style={{ backgroundColor: BON_TONES[i % BON_TONES.length] }} />
+                    <span className="truncate">{bonLabel(b)}</span>
+                    <span className="inline-flex items-center gap-1 text-steel-faint">
+                      <span className={`h-1.5 w-1.5 rounded-full ${b.status === 'Open' ? 'bg-signal' : 'bg-steel-faint'}`} />{b.status}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-paper">
+                    {kgMode ? `${fmtNum(Math.round(b.kg))} kg` : `${fmtNum(b.karung)} karung`}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function GentaniRow({ r, ambang, i }) {
   const MAX = 120;
   const fill = r.status === 'over' ? 'bg-danger' : r.status === 'warn' ? 'bg-signal' : 'bg-steel';
@@ -513,32 +597,7 @@ export default function Dashboard() {
             <div className="tile-body"><Trend daily={d.daily} /></div>
           </section>
 
-          <section className="tile md:col-span-5">
-            <TileHead label="Mix produksi" meta={`${fmtNum(lotTotal)} lot besar`} />
-            <div className="tile-body">
-              {lotTotal === 0 ? (
-                <Empty>Belum ada lot besar pada rentang ini.</Empty>
-              ) : (
-                <>
-                  <div className="flex h-2.5 gap-0.5">
-                    {d.productMix.filter(x => x.value > 0).map((x, i) => (
-                      <i key={x.p} className="anim-grow rounded-[2px]" style={{ ...stagger(i), flex: x.value, backgroundColor: PRODUCT_TONES[x.p].color }} title={`${x.p}: ${x.value} lot`} />
-                    ))}
-                  </div>
-                  <div className="mt-4 grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
-                    {d.productMix.map(x => (
-                      <div key={x.p} className="flex items-center justify-between gap-2 text-xs">
-                        <span className="inline-flex items-center gap-2 text-steel">
-                          <span className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: PRODUCT_TONES[x.p].color }} />{x.p}
-                        </span>
-                        <span className="readout text-xs">{x.value} · {Math.round((x.value / lotTotal) * 100)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
+          <BonTodayTile data={d.bonToday} navigate={navigate} />
 
           <section className="tile md:col-span-7">
             <TileHead label="Aktivitas shift" meta="5 terakhir">
