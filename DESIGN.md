@@ -74,8 +74,8 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 ## Layout
 
 - `.bento`: 1 kolom di mobile, 12 kolom di `md`.
-- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → stok material 8 + meja 3D 4 (dimuat saat diklik) → gentani 7 + tren harian 5 → mix produksi 5 + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
-- Planning: info shift 4, input lot 8; sisa stok 5, visualisasi 7; tabel 12.
+- Dashboard: header (status shift + satu aksi kontekstual) → strip "perlu tindakan" → 4 KPI dengan delta → rencana produksi 12 (lot kecil → lot besar → pcs per produk, total bon kg/karung, progres ½ shift) → stok material 8 + meja 3D 4 (dimuat saat diklik) → gentani 7 + tren harian 5 → mix produksi 5 + aktivitas 7. Data dari `lib/dashboard.js` (`buildDashboard`).
+- Planning: pemakaian ½ shift 12 (hanya saat ada shift Open); info shift 4, input lot 8; sisa stok 5, visualisasi 7; tabel bon 12 dengan kolom Saran Bon (kg + karung) dan Bon Final (−/+ per karung, input kg, selisih vs saran, tombol ke saran, saran "+N karung agar ≥ min").
 - Riwayat: filter 8, ringkasan 4; setiap bon 12.
 - Pengaturan: rasio 5, ringkasan 7; kebutuhan material 12; ukuran karung 6, stok minimum 6; gentani 12.
 - Sidebar desktop 236px (ciut 68px); mobile drawer 260px. Konten bergeser dengan margin yang sama.

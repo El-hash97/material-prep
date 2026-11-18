@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'vite';
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', optimizeDeps: { noDiscovery: true } });
-const { buildDashboard, addDays, deltaPct } = await vite.ssrLoadModule('/src/lib/dashboard.js');
+const { buildDashboard, addDays, deltaPct, planSummary } = await vite.ssrLoadModule('/src/lib/dashboard.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
 const { karungOf, karungKeMinimum, tengahShift } = await vite.ssrLoadModule('/src/lib/calc.js');
 
@@ -85,6 +85,27 @@ const openTengah = { ...open, pemakaianTengah: { LMC: 80 } };
 const lmcT = buildDashboard([openTengah, ...shifts], settings, 7, today).stock.find(r => r.material === 'LMC');
 assert.equal(lmcT.stok, 140);
 assert.equal(lmcT.akhir, 60);
+
+// Ringkasan planning: 2TR 6 lot kecil × 15 pcs = 90 pcs; bon 50 kg / 25 kg = 2 karung + 1000 kg / 1000 = 1.
+const planShift = {
+  id: 'p1', tanggal: today, shift: 'Red', waktu: 'Day', status: 'Open',
+  lotKecilMap: { '2TR': 6, KAI: 3 }, lotBesarMap: { '2TR': 2, KAI: 1 },
+  bonLines: [
+    { material: 'Inocarb', bonFinal: 50, bonFinalOverride: null, ukuranKarung: 25 },
+    { material: 'LMC', bonFinal: 0, bonFinalOverride: 1000, ukuranKarung: 1000 },
+    { material: 'Sn', bonFinal: 0, bonFinalOverride: null, ukuranKarung: 50 },
+  ],
+  pemakaianTengah: { LMC: 400 }, pemakaianTengahAt: '2026-11-18T05:00:00.000Z',
+};
+const plan = planSummary(planShift, { ...settings, pcsPerLotKecil: { '2TR': 15, KAI: 120 } });
+assert.deepEqual(plan.products.find(x => x.p === '2TR'), { p: '2TR', lotKecil: 6, lotBesar: 2, pcs: 90 });
+assert.deepEqual(plan.total, { lotKecil: 9, lotBesar: 3, pcs: 450 });
+assert.equal(plan.bonKg, 1050);
+assert.equal(plan.karung, 3);
+assert.equal(plan.materials, 2);
+assert.deepEqual(plan.tengah, { at: '2026-11-18T05:00:00.000Z', dicatat: 1, total: 3 });
+assert.equal(planSummary(null, settings), null);
+assert.equal(buildDashboard([planShift, ...shifts], settings, 7, today).plan.id, 'p1');
 
 await vite.close();
 console.log('dashboard.check: ok');

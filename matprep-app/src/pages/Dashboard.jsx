@@ -6,7 +6,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import {
   Plus, ArrowRight, ChevronRight, ChevronDown, ChevronUp, Database, Box,
-  TriangleAlert, CircleAlert, CircleCheck, CircleDashed,
+  TriangleAlert, CircleAlert, CircleCheck, CircleDashed, Timer,
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
@@ -164,6 +164,62 @@ function StockRow({ r, i }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Detail input planning shift aktif (atau shift terakhir): lot kecil → lot besar → pcs, total bon, progres ½ shift.
+function PlanTile({ plan, navigate }) {
+  const jam = iso => new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const open = plan.status === 'Open';
+  return (
+    <section className="tile md:col-span-12">
+      <TileHead
+        label="Rencana produksi"
+        meta={`Shift ${plan.shift} · ${formatDate(plan.tanggal)}${plan.waktu ? ` · ${plan.waktu}` : ''} · ${open ? 'Open' : 'shift terakhir, sudah ditutup'}`}
+      >
+        <button className="btn btn-ghost btn-xs" onClick={() => navigate('planning')}>Buat Bon<ChevronRight size={12} /></button>
+      </TileHead>
+      <div className="tile-body grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[4px] border border-white/[0.08] bg-white/[0.08] sm:grid-cols-4">
+          {plan.products.map(x => (
+            <div key={x.p} className="bg-iron-850 p-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-paper">
+                <span className="h-2 w-2 rounded-[2px]" style={{ backgroundColor: PRODUCT_TONES[x.p].color }} />{x.p}
+              </div>
+              <div className={`readout mt-2 text-2xl ${x.lotKecil ? '' : 'text-steel-faint'}`}>
+                {fmtNum(x.lotKecil)}<span className="ml-1 text-[11px] font-medium text-steel-faint">lot kecil</span>
+              </div>
+              <div className="mt-1 text-[11px] tabular-nums text-steel-dim">{fmtNum(x.lotBesar)} lot besar · {fmtNum(x.pcs)} pcs</div>
+            </div>
+          ))}
+        </div>
+        <dl className="grid content-start gap-x-4 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt className="tile-label">Total produksi</dt>
+            <dd className="readout mt-1.5 text-lg">{fmtNum(plan.total.lotBesar)}<span className="ml-1 text-[11px] font-medium text-steel-faint">lot besar</span></dd>
+            <dd className="text-[11px] tabular-nums text-steel-faint">{fmtNum(plan.total.lotKecil)} lot kecil · {fmtNum(plan.total.pcs)} pcs</dd>
+          </div>
+          <div>
+            <dt className="tile-label">Bon material</dt>
+            <dd className="readout mt-1.5 text-lg">{fmtNum(plan.bonKg)}<span className="ml-1 text-[11px] font-medium text-steel-faint">kg</span></dd>
+            <dd className="text-[11px] tabular-nums text-steel-faint">{fmtNum(plan.karung)} karung · {plan.materials} material</dd>
+          </div>
+          {open && (
+            <div className="well flex flex-wrap items-center justify-between gap-2 sm:col-span-2">
+              <span className="inline-flex items-center gap-2 text-[11px] text-steel">
+                <Timer size={13} className="shrink-0 text-steel-dim" />
+                {plan.tengah
+                  ? <>½ shift dicatat{plan.tengah.at ? ` ${jam(plan.tengah.at)}` : ''} · {plan.tengah.dicatat}/{plan.tengah.total} material</>
+                  : 'Pemakaian ½ shift belum dicatat'}
+              </span>
+              <button className="btn btn-outline btn-xs" onClick={() => navigate('planning')}>
+                {plan.tengah ? 'Perbarui' : 'Isi sekarang'}<ChevronRight size={12} />
+              </button>
+            </div>
+          )}
+        </dl>
+      </div>
+    </section>
   );
 }
 
@@ -368,6 +424,8 @@ export default function Dashboard() {
         </div>
 
         <div className="bento">
+          {d.plan && <PlanTile plan={d.plan} navigate={navigate} />}
+
           <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-8'}`}>
             <TileHead
               label="Stok material"

@@ -1,5 +1,5 @@
-import { PRODUCTS } from '../constants/defaults';
-import { getAllMaterials, effBonFinal, gentaniUsage } from './calc';
+import { PRODUCTS, DEFAULT_SETTINGS } from '../constants/defaults';
+import { getAllMaterials, effBonFinal, gentaniUsage, karungOf } from './calc';
 
 // Tanggal disimpan sebagai 'YYYY-MM-DD'; aritmetika hari memakai UTC agar tidak bergeser zona waktu.
 export function addDays(dateStr, n) {
@@ -63,6 +63,28 @@ export function stockRows(shifts, settings, today) {
     || (a.min > 0 && b.min > 0 ? a.stok / a.min - b.stok / b.min : 0));
 }
 
+// Ringkasan input planning satu shift: lot kecil → lot besar → pcs per produk, total bon, progres ½ shift.
+export function planSummary(shift, settings) {
+  if (!shift) return null;
+  const pcsPer = { ...DEFAULT_SETTINGS.pcsPerLotKecil, ...settings.pcsPerLotKecil };
+  const products = PRODUCTS.map(p => {
+    const lotKecil = shift.lotKecilMap?.[p] ?? 0;
+    return { p, lotKecil, lotBesar: shift.lotBesarMap?.[p] ?? 0, pcs: lotKecil * (pcsPer[p] ?? 0) };
+  });
+  const sum = k => products.reduce((a, x) => a + x[k], 0);
+  const bonLines = shift.bonLines ?? [];
+  const tengah = shift.pemakaianTengah ?? null;
+  return {
+    id: shift.id, tanggal: shift.tanggal, shift: shift.shift, waktu: shift.waktu, status: shift.status,
+    products,
+    total: { lotKecil: sum('lotKecil'), lotBesar: sum('lotBesar'), pcs: sum('pcs') },
+    bonKg: bonLines.reduce((a, l) => a + effBonFinal(l), 0),
+    karung: bonLines.reduce((a, l) => a + karungOf(effBonFinal(l), l.ukuranKarung), 0),
+    materials: bonLines.filter(l => effBonFinal(l) > 0).length,
+    tengah: tengah ? { at: shift.pemakaianTengahAt ?? null, dicatat: Object.keys(tengah).length, total: bonLines.length } : null,
+  };
+}
+
 export function buildDashboard(shifts, settings, period, today) {
   const from = addDays(today, -(period - 1));
   const prevTo = addDays(from, -1);
@@ -113,5 +135,6 @@ export function buildDashboard(shifts, settings, period, today) {
     productMix,
     recent: shifts.slice(0, 5).map(s => ({ ...s, bonKg: s.bonLines.reduce((a, l) => a + effBonFinal(l), 0) })),
     activeShift: shifts.find(s => s.status === 'Open') ?? null,
+    plan: planSummary(shifts.find(s => s.status === 'Open') ?? shifts[0], settings),
   };
 }
