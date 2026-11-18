@@ -79,6 +79,7 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 - Riwayat: filter 8, ringkasan 4; setiap bon 12.
 - Pengaturan: rasio 5, ringkasan 7; kebutuhan material 12; ukuran karung 6, stok minimum 6; gentani 12.
 - Sidebar desktop 236px (ciut 68px); mobile drawer 260px. Konten bergeser dengan margin yang sama.
+- Sidebar lipat (`components/Sidebar.jsx`): kolom ikon terkunci di x = 34px pada kedua keadaan; hanya lebar panel yang beranimasi. Label tidak di-unmount (`.sb-fade`): memudar 90ms saat melipat, muncul 160ms dengan tunda 90ms saat melebar. Satu kurva `--sb-ease` 240ms untuk lebar panel, margin konten (`.sb-shift`), chevron, dan drawer. Saat ciut, tooltip (`.sb-tip`) muncul saat hover atau fokus keyboard. Pintasan `Ctrl/⌘+B`; tombol punya `aria-expanded`. Drawer HP: overlay memudar, Escape menutup, fokus terkunci di drawer lalu kembali ke tombol menu, `inert` saat tertutup, scroll halaman dikunci.
 
 ## Komponen
 
@@ -97,7 +98,7 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 - Transisi 150ms untuk kontrol, 500-700ms ease-out untuk meter dan chart.
 - Tidak ada animasi masuk yang menghalangi; halaman langsung terbaca.
 - Animasi masuk data: bar/meter tumbuh dari kiri (`.anim-grow`, stagger 40ms via `--i`), sparkline tergambar (`.anim-draw`), angka KPI menghitung naik ±700ms, kolom tren Chart.js stagger hanya saat pertama tampil. Hanya transform/stroke; nilai akhir selalu ada di DOM.
-- `prefers-reduced-motion: reduce` mematikan semua animasi di atas (CSS + JS). Hindari animasi dekoratif.
+- `prefers-reduced-motion: reduce` mematikan semua animasi di atas (CSS + JS), termasuk transisi sidebar. Hindari animasi dekoratif.
 
 ## Responsif
 

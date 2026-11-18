@@ -25,13 +25,6 @@ export default function App() {
   return (
     <div className="min-h-screen text-paper">
 
-      {sidebarMobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
-          onClick={() => setSidebarMobileOpen(false)}
-        />
-      )}
-
       <Sidebar />
 
       <div
@@ -40,8 +33,9 @@ export default function App() {
       >
         <button
           onClick={() => setSidebarMobileOpen(true)}
-          className="rounded-[4px] p-1.5 text-steel transition-colors hover:bg-white/[0.06] hover:text-paper"
+          className="grid h-10 w-10 place-items-center rounded-[4px] text-steel transition-colors hover:bg-white/[0.06] hover:text-paper"
           aria-label="Buka navigasi"
+          aria-expanded={sidebarMobileOpen}
         >
           <Menu size={20} />
         </button>
@@ -59,7 +53,7 @@ export default function App() {
 
       <main
         id="main-content"
-        className={`min-h-screen pt-14 transition-[margin] duration-200 ${mainMargin} md:pt-0`}
+        className={`sb-shift min-h-screen pt-14 ${mainMargin} md:pt-0`}
       >
         <PageComponent key={page === 'tutup-shift' ? currentBonId ?? 'none' : page} />
       </main>
