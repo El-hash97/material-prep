@@ -102,8 +102,17 @@ export function buildStory(shift, settings) {
     beats: BEATS.map(b => ({ ...b, lines: text[b.id], target: !INTEGRASI_AKTIF && (b.id === 'input' || b.id === 'stok') })),
     scene: {
       boardBars: products.map(x => ({ color: x.color, v: x.lotKecil / Math.max(1, ...products.map(y => y.lotKecil)) })),
+      // isi layar monitor planning (babak 1–3): plan produksi → saran bon → bon tersimpan
+      screen: {
+        shift: src.shift ?? 'Red',
+        plan: products.map(x => ({ p: x.p, color: x.color, lotKecil: x.lotKecil, lotBesar: src.lotBesarMap?.[x.p] ?? 0, pcs: x.lotKecil * (pcsPer[x.p] ?? 0) })),
+        total: { lotBesar, pcs },
+        saran: top(saran, 5).map(([l, v]) => ({ material: l.material, kg: v, karung: karungOf(v, l.ukuranKarung) })),
+        bon: { kg: bonKg, karung, materials: lines.filter(l => effBonFinal(l) > 0).length, delta: deltaKarung },
+      },
       karung,
       palletSacks: Math.min(PALLET_MAX, karung),
+      inputRows: top(Object.entries(input), 4), // isi layar tablet aplikasi produksi (babak 7)
       bars,
       shiftFrom: src.shift ?? 'Red',
       shiftTo: src.shift === 'White' ? 'Red' : 'White',

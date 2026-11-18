@@ -132,6 +132,9 @@ assert.equal(st.contoh, false);
 assert.equal(st.scene.karung, 12);                       // 250/25 + 50/25
 assert.equal(st.scene.palletSacks, Math.min(PALLET_MAX, 12));
 assert.equal(st.scene.shiftTo, 'Red');
+assert.deepEqual(st.scene.screen.plan.find(x => x.p === '2TR'), { p: '2TR', color: st.scene.screen.plan[0].color, lotKecil: 6, lotBesar: 2, pcs: 90 });
+assert.deepEqual(st.scene.screen.saran.map(x => [x.material, x.karung]), [['LMC', 8], ['Inocarb', 2]]);
+assert.deepEqual(st.scene.screen.bon, { kg: 300, karung: 12, materials: 2, delta: 2 });
 assert.deepEqual(st.beats[2].lines, ['Bon 300 kg · 12 karung · 2 material', '+2 karung disesuaikan operator']);
 assert.equal(st.beats[0].lines[1], '2 lot besar · 90 pcs');
 assert.deepEqual(st.beats[6].lines, ['LMC 120 kg · Inocarb 10 kg', 'Dari pemakaian ½ shift tercatat']);

@@ -65,7 +65,7 @@ export default function StoryLoop({ story }) {
     import('../lib/storyScene')
       .then(({ createStoryScene }) => {
         if (cancelled || !holderRef.current) return;
-        api.current = createStoryScene(holderRef.current, shownRef.current.scene, { maxDpr: MOBILE ? 1 : 1.5 });
+        api.current = createStoryScene(holderRef.current, shownRef.current.scene, { maxDpr: MOBILE ? 1 : 1.5, shadows: !MOBILE });
         ro = new ResizeObserver(([e]) => { api.current?.resize(e.contentRect.width, e.contentRect.height); paint(); });
         ro.observe(holderRef.current);
       })

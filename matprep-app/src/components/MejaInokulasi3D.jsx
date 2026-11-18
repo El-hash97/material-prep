@@ -391,8 +391,13 @@ function buildScene(view, onPick) {
 
   let lidsOpen = true;
   const timer = new THREE.Timer();
+  // Selalu tampil di Dashboard: jangan render saat di luar layar atau tab tersembunyi.
+  let onScreen = true;
+  const io = new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; });
+  io.observe(view);
   renderer.setAnimationLoop(() => {
     timer.update();
+    if (!onScreen || document.hidden) return;
     const dt = Math.min(timer.getDelta(), .05);
     for (const l of lids) { const target = lidsOpen ? l.open : 0; l.cur += (target - l.cur) * Math.min(1, dt * 6); l.pivot.rotation.x = l.cur; }
     if (tween) {
@@ -429,7 +434,7 @@ function buildScene(view, onPick) {
     setTags(on) { labelR.domElement.style.display = on ? '' : 'none'; },
     setXray(on) { binFront.opacity = on ? .15 : 1; binFront.depthWrite = !on; },
     dispose() {
-      renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose();
+      renderer.setAnimationLoop(null); ro.disconnect(); io.disconnect(); controls.dispose();
       scene.traverse(o => {
         o.geometry?.dispose();
         for (const m of [o.material].flat()) { m?.map?.dispose(); m?.dispose(); }

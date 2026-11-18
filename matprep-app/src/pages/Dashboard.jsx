@@ -6,7 +6,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import {
   Plus, ArrowRight, ChevronRight, ChevronDown, ChevronUp, Database,
-  TriangleAlert, CircleAlert, CircleCheck, CircleDashed, Timer, Maximize2,
+  TriangleAlert, CircleAlert, CircleCheck, CircleDashed, Timer,
 } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
@@ -328,7 +328,6 @@ export default function Dashboard() {
   const setCurrentBonId = useStore(s => s.setCurrentBonId);
   const [period, setPeriod] = useState(7);
   const [showAllStock, setShowAllStock] = useState(false);
-  const [show3d, setShow3d] = useState(false);
 
   const settings = db.getSettings();
   const shifts = db.getShifts();
@@ -429,7 +428,7 @@ export default function Dashboard() {
         <div className="bento">
           {d.plan && <PlanTile plan={d.plan} navigate={navigate} />}
 
-          <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-8'}`}>
+          <section className="tile md:col-span-8">
             <TileHead
               label="Stok material"
               meta={activeShift
@@ -464,23 +463,20 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section className={`tile ${show3d ? 'md:col-span-12' : 'md:col-span-4'}`}>
+          <section className="tile md:col-span-4">
+            <TileHead label="Alur shift" meta="Animasi berulang · data shift ini" />
+            <div className="tile-body"><StoryLoop story={story} /></div>
+          </section>
+
+          <section className="tile md:col-span-12">
             <TileHead
-              label={show3d ? 'Meja inokulasi' : 'Alur shift'}
-              meta={show3d ? '3D interaktif · stok per kompartemen' : 'Animasi berulang · data shift ini'}
-            >
-              {show3d
-                ? <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(false)}>Tutup 3D</button>
-                : <button className="btn btn-ghost btn-xs" onClick={() => setShow3d(true)}><Maximize2 size={12} />Buka 3D interaktif</button>}
-            </TileHead>
+              label="Meja inokulasi"
+              meta={activeShift ? `3D interaktif · shift ${activeShift.shift} · sisa + bon per kompartemen` : '3D interaktif · sisa akhir shift terakhir per kompartemen'}
+            />
             <div className="tile-body">
-              {show3d ? (
-                <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
-                  <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
-                </Suspense>
-              ) : (
-                <StoryLoop story={story} />
-              )}
+              <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+                <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
+              </Suspense>
             </div>
           </section>
 
