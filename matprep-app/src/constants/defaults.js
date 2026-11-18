@@ -1,6 +1,6 @@
 export const PRODUCTS = ['2TR', '1TR', 'KAI', 'CRANK'];
 
-// Palet kategorikal tervalidasi (dataviz validator, permukaan #111518, urutan bersebelahan 2TR→1TR→KAI→CRANK):
+// Palet kategorikal tervalidasi (dataviz validator, permukaan tile #14191C, urutan bersebelahan 2TR→1TR→KAI→CRANK):
 // tidak memakai hue status (merah/amber/hijau). Jangan ubah urutan tanpa validasi ulang.
 export const PRODUCT_TONES = {
   '2TR':   { color: '#3987E5', soft: 'rgba(57, 135, 229, 0.16)',  label: 'Blue' },

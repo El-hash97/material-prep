@@ -18,23 +18,44 @@ Dark industrial control panel. Permukaan besi gelap, tipografi rapat, angka besa
 
 ### Warna
 
+Semua rasio diukur (WCAG 2.x). Target: teks ≥ 4.5:1, batas komponen UI ≥ 3:1. Tile solid (tanpa alfa) agar rasio bisa diprediksi.
+
+**Permukaan (elevasi naik, hue baja dingin)**
+
 | Token | Hex | Pakai |
 |---|---|---|
 | `iron-950` | `#090B0C` | latar halaman |
-| `iron-900` | `#0D1012` | sidebar, input, well |
-| `iron-850` | `#111518` | permukaan tile |
-| `iron-800` | `#171C1F` | header tabel |
-| `iron-700` | `#2B3439` | border kuat, scrollbar |
-| `paper` | `#ECE9E2` | teks utama |
-| `steel` | `#A7B0B3` | teks sekunder |
-| `steel-dim` | `#7C8588` | label |
-| `steel-faint` | `#5A6366` | metadata |
-| `signal` | `#F0A32A` | aksi, waspada, aksen |
-| `danger` | `#E2574C` | over-use, hapus |
-| `success` | `#4DBE8A` | aman, selesai |
-| `info` | `#6E9FE8` | informasi |
+| `iron-900` | `#0E1214` | sidebar, input, `well` |
+| `iron-850` | `#14191C` | tile, card |
+| `iron-800` | `#1B2125` | header tabel, tooltip, permukaan raised |
+| `iron-750` | `#222A2E` | hover (jangan beri teks `steel-faint`: hanya 4.1:1) |
+| `iron-700` | `#2C353A` | track meter, scrollbar (dekoratif) |
+| `iron-600` | `#3A444A` | scrollbar hover |
+| `iron-500` | `#59636A` | border input, 3.1:1 di `iron-900` |
 
-Warna produk (kategorikal, tervalidasi CVD di `#111518`, urutan tetap): 2TR `#3987E5`, 1TR `#D55181`, KAI `#9085E9`, CRANK `#199E70`, dengan versi `soft` rgba 0.16 untuk latar. Tidak memakai hue status; jangan ubah tanpa menjalankan validator palet.
+Garis rambut `white/[0.06–0.08]` hanya pemisah dekoratif; komponen yang bisa diisi wajib border `iron-500`.
+
+**Teks (rasio di tile / raised)**
+
+| Token | Hex | Rasio | Pakai |
+|---|---|---|---|
+| `paper` | `#ECE9E2` | 14.6 / 13.4 | teks utama, angka, sorotan data |
+| `steel` | `#B3BBBE` | 9.1 / 8.3 | teks sekunder |
+| `steel-dim` | `#959EA2` | 6.5 / 6.0 | label, judul tile |
+| `steel-faint` | `#808A8E` | 5.0 / 4.6 | metadata, satuan, tick sumbu (terendah yang lolos AA) |
+
+**Aksen dan status (rasio di tile; teks di atasnya selalu `iron-950`)**
+
+| Token | Hex | Rasio | Teks `iron-950` di atasnya | Pakai |
+|---|---|---|---|---|
+| `signal` | `#F0A32A` | 8.4 | 9.4 | tombol aksi, fokus, waspada |
+| `danger` | `#EB6A5F` | 5.7 | 6.4 | over-use, kritis, hapus |
+| `success` | `#4DBE8A` | 7.6 | 8.5 | aman, selesai |
+| `info` | `#7AA8EE` | 7.3 | n/a | informasi |
+
+Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu disertai ikon + teks, tidak pernah warna saja.
+
+**Produk (kategorikal):** 2TR `#3987E5`, 1TR `#D55181`, KAI `#9085E9`, CRANK `#199E70`, dengan versi `soft` rgba 0.16 untuk latar. Tervalidasi CVD di tile `#14191C`, urutan tetap. Warna produk hanya untuk swatch, bar, dan border; nama produk ditulis `paper` (1TR cuma 4.2:1 di raised). Pengecualian: judul produk ≥ 24px (teks besar, cukup 3:1).
 
 ### Tipografi
 
@@ -65,8 +86,8 @@ Warna produk (kategorikal, tervalidasi CVD di `#111518`, urutan tetap): 2TR `#39
 - `page-head`: judul, subjudul, aksi kanan; garis bawah.
 - `chip` untuk status ringan; `badge` untuk status bon/over-use.
 - `segmented` untuk rentang waktu dan pilihan shift.
-- Tombol: `btn-primary` amber, `btn-warning` amber outline, `btn-outline`, `btn-ghost`; ukuran `btn-sm`/`btn-xs`.
-- Form: `form-control` gelap dengan fokus amber; `form-label` uppercase.
+- Tombol: `btn-primary` amber, `btn-success` hijau, `btn-danger` merah (semua teks `iron-950`), `btn-warning` amber outline, `btn-outline`, `btn-ghost`; ukuran `btn-sm`/`btn-xs`. Fokus keyboard: outline amber 2px offset 2px.
+- Form: `form-control` di `iron-900` dengan border `iron-500` (3:1) dan fokus amber; `form-label` uppercase.
 - Tabel: `data-table` + `table-header` + `table-row` + `table-foot`; angka rata kanan.
 - `alert-*` untuk pesan; `meter` untuk gentani; `well` untuk blok dalam tile.
 - Visualisasi: satu sumbu y linear; tanpa skala log, sumbu ganda, atau donut. Data biasa abu baja, sorotan `paper`; merah/amber/hijau hanya untuk status (selalu dengan ikon + teks). Bar status (stok, gentani) memakai HTML/CSS; Chart.js hanya untuk tren harian. Grid `rgba(255,255,255,0.055)`.

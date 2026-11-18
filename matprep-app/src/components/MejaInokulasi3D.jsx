@@ -416,7 +416,7 @@ function buildScene(view, onPick) {
           'whitespace-nowrap rounded-[3px] border-l-[3px] px-1.5 py-0.5 text-[11px] leading-tight -translate-y-1.5',
           on ? 'bg-signal text-iron-950' : 'bg-iron-950/85 text-paper group-data-[narrow=true]:hidden',
         ].join(' ');
-        tags[i].style.borderLeftColor = lv?.low ? '#E2574C' : '#4DBE8A';
+        tags[i].style.borderLeftColor = lv?.low ? '#EB6A5F' : '#4DBE8A';
         const val = lv ? `${fmtNum(lv.solid)} kg` : '—';
         const bon = showPlan && lv?.bon > 0 ? ` <span class="${on ? '' : 'text-orange-400'}">+${fmtNum(lv.bon)}</span>` : '';
         tags[i].innerHTML = `<b class="font-semibold">${c.short}</b> <span class="${on ? '' : 'text-steel'}">${val}</span>${bon}`;

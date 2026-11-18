@@ -5,25 +5,28 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Elevasi gelap (hue baja dingin): halaman → well → tile → raised → hover. Lihat DESIGN.md untuk rasio kontras.
         iron: {
-          950: '#090B0C',
-          900: '#0D1012',
-          850: '#111518',
-          800: '#161B1E',
-          750: '#1B2125',
-          700: '#22292D',
-          600: '#2B3439',
+          950: '#090B0C', // halaman
+          900: '#0E1214', // sidebar, input, well
+          850: '#14191C', // tile
+          800: '#1B2125', // header tabel, tooltip, raised
+          750: '#222A2E', // hover (jangan pakai steel-faint di atasnya)
+          700: '#2C353A', // track meter, scrollbar
+          600: '#3A444A', // scrollbar hover
+          500: '#59636A', // border input (3:1 di well)
         },
         paper: '#ECE9E2',
+        // Tier teks, semuanya ≥ 4.5:1 di tile & raised: paper 14.6 · steel 9.1 · dim 6.5 · faint 5.0
         steel: {
-          DEFAULT: '#A7B0B3',
-          dim: '#7C8588',
-          faint: '#5A6366',
+          DEFAULT: '#B3BBBE',
+          dim: '#959EA2',
+          faint: '#808A8E',
         },
         signal: '#F0A32A',
-        danger: '#E2574C',
+        danger: '#EB6A5F',
         success: '#4DBE8A',
-        info: '#6E9FE8',
+        info: '#7AA8EE',
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],

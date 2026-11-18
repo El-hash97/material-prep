@@ -20,7 +20,7 @@ const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, LineController, LineElement, PointElement);
 Chart.defaults.font.family = 'Plus Jakarta Sans, sans-serif';
 
-const C = { paper: '#ECE9E2', steel: '#A7B0B3', dim: '#7C8588', faint: '#5A6366', grid: 'rgba(255,255,255,0.055)' };
+const C = { paper: '#ECE9E2', steel: '#B3BBBE', dim: '#959EA2', faint: '#808A8E', raised: '#1B2125', grid: 'rgba(255,255,255,0.06)' }; // = token tailwind
 const fmt1 = n => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
 const pctOf = (v, max) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 const REDUCED = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -228,7 +228,7 @@ function Trend({ daily }) {
       legend: { display: false },
       tooltip: {
         filter: item => item.datasetIndex === 0,
-        backgroundColor: '#111518', borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1,
+        backgroundColor: C.raised, borderColor: 'rgba(255,255,255,0.14)', borderWidth: 1,
         titleColor: C.paper, bodyColor: C.steel, padding: 10, cornerRadius: 3, displayColors: false,
         callbacks: {
           title: items => formatDate(daily[items[0].dataIndex].date),
@@ -360,7 +360,7 @@ export default function Dashboard() {
             <Mix parts={[
               { key: 'Aman', value: kpis.gentani.ok, color: C.dim },
               { key: 'Waspada', value: kpis.gentani.warn, color: '#F0A32A' },
-              { key: 'Over', value: kpis.gentani.over, color: '#E2574C' },
+              { key: 'Over', value: kpis.gentani.over, color: '#EB6A5F' },
             ]} />
           </Kpi>
         </div>

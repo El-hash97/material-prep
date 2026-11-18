@@ -34,16 +34,16 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #2B3439 #0D1012;
+    scrollbar-color: #2C353A #0E1214;
   }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: #0D1012; }
+  ::-webkit-scrollbar-track { background: #0E1214; }
   ::-webkit-scrollbar-thumb {
-    background: #2B3439;
-    border: 2px solid #0D1012;
+    background: #2C353A;
+    border: 2px solid #0E1214;
     border-radius: 8px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #3B474D; }
+  ::-webkit-scrollbar-thumb:hover { background: #3A444A; }
 
   :focus-visible {
     outline: 2px solid rgba(240, 163, 42, 0.85);
@@ -64,7 +64,7 @@
   .bento > * { min-width: 0; }
 
   .tile {
-    @apply relative rounded-[5px] border border-white/[0.08] bg-iron-850/85;
+    @apply relative rounded-[5px] border border-white/[0.08] bg-iron-850;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 12px 30px -24px rgba(0, 0, 0, 0.9);
   }
 
@@ -124,7 +124,7 @@
     @apply border-signal/35 bg-signal/10 text-signal hover:bg-signal/20 hover:border-signal/60;
   }
   .btn-danger {
-    @apply bg-danger text-white hover:bg-[#EF6A60] active:bg-[#C7463D];
+    @apply bg-danger text-iron-950 hover:bg-[#F27F75] active:bg-[#D45A50];
   }
   .btn-outline {
     @apply border-white/[0.14] bg-transparent text-steel hover:border-signal/55 hover:bg-signal/10 hover:text-paper;
@@ -136,7 +136,7 @@
   .btn-xs { @apply px-2.5 py-1 text-[11px]; }
 
   .card {
-    @apply rounded-[5px] border border-white/[0.08] bg-iron-850/85 p-5;
+    @apply rounded-[5px] border border-white/[0.08] bg-iron-850 p-5;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 12px 30px -24px rgba(0, 0, 0, 0.9);
   }
   .card-title {
@@ -144,7 +144,7 @@
   }
 
   .form-control {
-    @apply w-full rounded-[4px] border border-white/[0.12] bg-iron-900 px-3 py-2 text-sm text-paper outline-none transition-all duration-150
+    @apply w-full rounded-[4px] border border-iron-500 bg-iron-900 px-3 py-2 text-sm text-paper outline-none transition-all duration-150
            placeholder:text-steel-faint focus:border-signal/70 focus:ring-2 focus:ring-signal/15;
   }
   .form-label {

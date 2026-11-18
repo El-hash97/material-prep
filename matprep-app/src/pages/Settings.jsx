@@ -154,7 +154,7 @@ export default function Settings() {
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {PRODUCTS.map(p => (
-                <span key={p} className="chip" style={{ color: PRODUCT_TONES[p].color, borderColor: PRODUCT_TONES[p].soft }}>
+                <span key={p} className="chip text-paper" style={{ borderColor: PRODUCT_TONES[p].soft }}>
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
                   {p}
                 </span>
@@ -180,7 +180,7 @@ export default function Settings() {
                     <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tone.color }} />
-                        <span className="font-display text-lg font-semibold" style={{ color: tone.color }}>{p}</span>
+                        <span className="font-display text-lg font-semibold text-paper">{p}</span>
                       </div>
                       <span className="text-[10px] text-steel-faint">{Object.keys(mats).length} material</span>
                     </div>
@@ -364,7 +364,7 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {PRODUCTS.map(p => (
                   <div key={p}>
-                    <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold" style={{ color: PRODUCT_TONES[p].color }}>
+                    <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold text-paper">
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
                       {p}
                     </label>
@@ -397,7 +397,7 @@ export default function Settings() {
                     <div className="mb-2 flex items-center justify-between gap-2 border-b border-white/[0.06] pb-2">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PRODUCT_TONES[p].color }} />
-                        <span className="font-display text-lg font-semibold" style={{ color: PRODUCT_TONES[p].color }}>{p}</span>
+                        <span className="font-display text-lg font-semibold text-paper">{p}</span>
                       </div>
                       <span className="text-[10px] text-steel-faint">{pcsPerLot} pcs/lot kecil</span>
                     </div>
