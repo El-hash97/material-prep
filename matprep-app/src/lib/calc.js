@@ -130,3 +130,17 @@ export function todayStr() {
 export function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
+
+// Karung yang dibutuhkan untuk sejumlah kg (dibulatkan ke atas). Ukuran karung 0/kosong dianggap 25 kg.
+export function karungOf(kg, ukuranKarung) {
+  const uk = ukuranKarung > 0 ? ukuranKarung : 25;
+  return kg > 0 ? Math.ceil(kg / uk - 1e-9) : 0;
+}
+
+// Karung tambahan agar sisa setelah shift (sisa + bon − kebutuhan) tidak di bawah stok minimum.
+// 0 bila minimum belum diatur atau sudah terpenuhi.
+export function karungKeMinimum(line, min) {
+  if (!(min > 0)) return 0;
+  const sisaSetelah = (line.sisaStok ?? 0) + effBonFinal(line) - line.totalTepat;
+  return karungOf(min - sisaSetelah, line.ukuranKarung);
+}

@@ -1,12 +1,33 @@
-import { RefreshCw, Save, Printer, Package, Plus, AlertTriangle, Info, Scale } from 'lucide-react';
+import { RefreshCw, Save, Printer, Package, Plus, Minus, RotateCcw, AlertTriangle, Info, Scale } from 'lucide-react';
 import useStore from '../store/useStore';
 import { db } from '../store/db';
 import { PRODUCTS, PRODUCT_TONES } from '../constants/defaults';
-import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, formatDate, genId, todayStr } from '../lib/calc';
+import { buildBonLines, calcLotBesar, getAllMaterials, effBonFinal, fmtNum, formatDate, genId, todayStr, karungOf, karungKeMinimum } from '../lib/calc';
 import { printBon } from '../lib/print';
 import MaterialIcon from '../components/MaterialIcon';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
+
+// Input kg bon final: draf lokal agar operator bisa mengosongkan lalu mengetik ulang tanpa lompat ke 0.
+function BonKgInput({ value, step, label, onCommit }) {
+  const [draft, setDraft] = useState(String(value));
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) { setSeen(value); setDraft(String(value)); }
+  return (
+    <input
+      type="number" min="0" step={step} inputMode="decimal"
+      className="form-control w-24 py-1.5 text-right text-xs font-semibold"
+      value={draft}
+      aria-label={label}
+      onChange={e => {
+        setDraft(e.target.value);
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v) && v >= 0) onCommit(v);
+      }}
+      onBlur={() => setDraft(String(value))}
+    />
+  );
+}
 
 export default function Planning() {
   const {
@@ -63,13 +84,16 @@ export default function Planning() {
       }));
   const zeroMats =calculatedBonLines.filter(l => effBonFinal(l) === 0 && l.totalTepat > 0).map(l => l.material);
 
-  let totTepat = 0, totFinal = 0, totSisa = 0;
+  let totTepat = 0, totFinal = 0, totSisa = 0, totSaran = 0, totKarung = 0;
   calculatedBonLines.forEach(l => {
     totTepat += l.totalTepat;
     const eff = effBonFinal(l);
     totFinal += eff;
+    totSaran += l.bonFinal;
+    totKarung += eff / (l.ukuranKarung || 25);
     totSisa += l.sisaStok + eff - l.totalTepat;
   });
+  totKarung = Math.round(totKarung * 10) / 10;
 
   const totalLotKecil = PRODUCTS.reduce((a, p) => a + (planForm.lotKecilMap[p] ?? 0), 0);
   const totalLotBesar = PRODUCTS.reduce((a, p) => a + calcLotBesar(planForm.lotKecilMap[p] ?? 0, settings.rasioKonversi), 0);
@@ -274,7 +298,7 @@ export default function Planning() {
               <div>
                 <div className="tile-label">Tabel Bon Material</div>
                 <div className="mt-1.5 text-[11px] text-steel-faint">
-                  {calculatedBonLines.length} material · override bon final per baris
+                  {calculatedBonLines.length} material · saran = kebutuhan − sisa, dibulatkan per karung · ubah dengan − / + per karung
                 </div>
               </div>
               <div className="flex items-center gap-2 text-right">
@@ -292,10 +316,10 @@ export default function Planning() {
                 </div>
               )}
               <div className="-mx-4 overflow-x-auto px-4">
-                <table className="data-table min-w-[820px]">
+                <table className="data-table min-w-[900px]">
                   <thead>
                     <tr className="table-header">
-                      {['Material', 'Produk', 'Total Tepat', 'Sisa Sebelum', 'Bon Final', 'Sisa Setelah', 'Override', 'Karung'].map((h, i) => (
+                      {['Material', 'Produk', 'Kebutuhan', 'Sisa Sebelum', 'Saran Bon', 'Bon Final', 'Sisa Setelah'].map((h, i) => (
                         <th key={h} className={`px-3 py-2.5 ${i >= 2 ? 'text-right' : 'text-left'}`}>{h}</th>
                       ))}
                     </tr>
@@ -303,16 +327,21 @@ export default function Planning() {
                   <tbody>
                     {calculatedBonLines.map((l, idx) => {
                       const eff = effBonFinal(l);
+                      const uk = l.ukuranKarung;
                       const sisaSetelah = l.sisaStok + eff - l.totalTepat;
                       const produkStr = l.produkRincian.map(r => `${r.produk}(${r.lotBesar})`).join(', ');
+                      const setBon = kg => updateOverride(idx, kg === l.bonFinal ? null : kg);
+                      const deltaKarung = Math.round(((eff - l.bonFinal) / uk) * 10) / 10;
+                      const min = settings.stokMinimum?.[l.material] ?? 0;
+                      const keMin = karungKeMinimum(l, min);
                       return (
-                        <tr key={l.material} className={`table-row ${eff === 0 ? 'opacity-55' : ''}`}>
+                        <tr key={l.material} className="table-row align-top">
                           <td className="px-3 py-2.5">
                             <div className="flex items-center gap-2.5">
                               <MaterialIcon material={l.material} className="h-9 w-9" />
                               <div>
                                 <div className="font-semibold text-paper">{l.material}</div>
-                                <div className="text-[10px] text-steel-faint">{fmtNum(l.ukuranKarung)} kg/karung</div>
+                                <div className="text-[10px] text-steel-faint">{fmtNum(uk)} kg/karung</div>
                               </div>
                             </div>
                           </td>
@@ -323,30 +352,68 @@ export default function Planning() {
                               ? <span className="font-semibold text-success">{fmtNum(l.sisaStok)}</span>
                               : <span className="text-steel-faint">—</span>}
                           </td>
-                          <td className="num-cell px-3 py-2.5 font-bold tabular-nums text-paper">
-                            {eff === 0
-                              ? <span className="text-[11px] font-semibold text-success">Cukup</span>
-                              : fmtNum(eff)}
+                          <td className="num-cell px-3 py-2.5">
+                            {l.bonFinal === 0 ? (
+                              <span className="text-[11px] font-semibold text-success">Cukup, tidak perlu bon</span>
+                            ) : (
+                              <>
+                                <div className="font-semibold tabular-nums text-paper">{fmtNum(l.bonFinal)} kg</div>
+                                <div className="mt-0.5 text-[10px] text-steel-faint">{karungOf(l.bonFinal, uk)} karung × {fmtNum(uk)} kg</div>
+                              </>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                className="grid h-8 w-8 place-items-center rounded-[4px] border border-iron-500 text-steel transition-colors hover:border-signal/60 hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
+                                disabled={eff <= 0}
+                                onClick={() => setBon(Math.max(0, eff - uk))}
+                                aria-label={`Kurangi 1 karung ${l.material}`}
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <BonKgInput value={eff} step={uk} label={`Bon final ${l.material} (kg)`} onCommit={setBon} />
+                              <button
+                                type="button"
+                                className="grid h-8 w-8 place-items-center rounded-[4px] border border-iron-500 text-steel transition-colors hover:border-signal/60 hover:text-paper"
+                                onClick={() => setBon(eff + uk)}
+                                aria-label={`Tambah 1 karung ${l.material}`}
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                            <div className="mt-1 flex items-center justify-end gap-2 text-[10px]">
+                              <span className="tabular-nums text-steel-faint">{fmtNum(Math.round((eff / uk) * 10) / 10)} karung</span>
+                              {l.bonFinalOverride !== null && (
+                                <>
+                                  <span className={`font-semibold tabular-nums ${deltaKarung > 0 ? 'text-signal' : 'text-steel'}`}>
+                                    {deltaKarung > 0 ? '+' : ''}{fmtNum(deltaKarung)} dari saran
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-0.5 font-semibold text-steel-dim hover:text-paper"
+                                    onClick={() => updateOverride(idx, null)}
+                                  >
+                                    <RotateCcw size={10} />Saran
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
                           <td className="num-cell px-3 py-2.5 tabular-nums">
                             {sisaSetelah > 0
                               ? <span className="font-semibold text-success">{fmtNum(sisaSetelah)}</span>
-                              : <span className="text-steel-faint">0</span>}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <input
-                              type="number" min="0" step={l.ukuranKarung}
-                              className="form-control w-24 py-1.5 text-right text-xs"
-                              value={l.bonFinalOverride ?? ''} placeholder={String(l.bonFinal)}
-                              aria-label={`Override bon final ${l.material}`}
-                              onChange={e => {
-                                const v = parseFloat(e.target.value);
-                                updateOverride(idx, isNaN(v) || e.target.value === '' ? null : v);
-                              }}
-                            />
-                          </td>
-                          <td className="num-cell px-3 py-2.5 text-xs text-steel-dim">
-                            {eff > 0 ? `${fmtNum(eff / l.ukuranKarung)} krgn` : '—'}
+                              : <span className={sisaSetelah < 0 ? 'font-semibold text-danger' : 'text-steel-faint'}>{fmtNum(sisaSetelah)}</span>}
+                            {keMin > 0 && (
+                              <button
+                                type="button"
+                                className="mt-1 block w-full text-right text-[10px] font-semibold text-signal hover:underline"
+                                onClick={() => setBon(eff + keMin * uk)}
+                              >
+                                +{keMin} karung agar ≥ min {fmtNum(min)}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -357,9 +424,9 @@ export default function Planning() {
                       <td colSpan={2} className="px-3 py-2.5 text-[10px] uppercase tracking-[0.14em] text-steel-dim">Total</td>
                       <td className="num-cell px-3 py-2.5 tabular-nums">{fmtNum(totTepat)}</td>
                       <td />
-                      <td className="num-cell px-3 py-2.5 tabular-nums text-signal">{fmtNum(totFinal)}</td>
+                      <td className="num-cell px-3 py-2.5 tabular-nums">{fmtNum(totSaran)}</td>
+                      <td className="num-cell px-3 py-2.5 tabular-nums text-signal">{fmtNum(totFinal)} kg · {fmtNum(totKarung)} karung</td>
                       <td className="num-cell px-3 py-2.5 tabular-nums">{fmtNum(totSisa)}</td>
-                      <td colSpan={2} />
                     </tr>
                   </tfoot>
                 </table>

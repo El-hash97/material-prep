@@ -5,6 +5,18 @@ import { createServer } from 'vite';
 const vite = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error', optimizeDeps: { noDiscovery: true } });
 const { buildDashboard, addDays, deltaPct } = await vite.ssrLoadModule('/src/lib/dashboard.js');
 const { DEFAULT_SETTINGS } = await vite.ssrLoadModule('/src/constants/defaults.js');
+const { karungOf, karungKeMinimum } = await vite.ssrLoadModule('/src/lib/calc.js');
+
+// Saran bon per karung
+assert.equal(karungOf(0, 25), 0);
+assert.equal(karungOf(25, 25), 1);
+assert.equal(karungOf(26, 25), 2);
+assert.equal(karungOf(10, 0), 1); // ukuran kosong → 25 kg
+const bonLine = { sisaStok: 10, bonFinal: 50, bonFinalOverride: null, totalTepat: 55, ukuranKarung: 25 };
+assert.equal(karungKeMinimum(bonLine, 0), 0); // minimum belum diatur
+assert.equal(karungKeMinimum(bonLine, 5), 0); // sisa setelah 5 ≥ 5
+assert.equal(karungKeMinimum(bonLine, 30), 1); // kurang 25 → 1 karung
+assert.equal(karungKeMinimum({ ...bonLine, bonFinalOverride: 75 }, 30), 0); // override sudah menutup
 
 assert.equal(addDays('2026-11-01', -1), '2026-10-31');
 assert.equal(addDays('2026-12-31', 1), '2027-01-01');
