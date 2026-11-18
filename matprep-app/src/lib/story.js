@@ -5,15 +5,15 @@ import { buildBonLines, effBonFinal, karungOf, fmtNum } from './calc';
 // Fungsi murni: scene 3D dan storyboard fallback sama-sama membaca hasil buildStory().
 
 export const BEATS = [
-  { id: 'planning', title: 'Input planning produksi', dur: 3 },
-  { id: 'saran',    title: 'Saran pengebonan',        dur: 3.5 },
-  { id: 'bon',      title: 'Pengebonan',              dur: 3 },
-  { id: 'kirim',    title: 'Kirim warehouse → melting', dur: 6 },
-  { id: 'isi',      title: 'Material diisi ke meja',  dur: 5 },
-  { id: 'pakai',    title: 'Material dipakai dari meja', dur: 4.5 },
-  { id: 'input',    title: 'Input di aplikasi produksi', dur: 4 },
-  { id: 'stok',     title: 'Stok MatPrep berkurang',  dur: 4 },
-  { id: 'tutup',    title: 'Tutup shift',             dur: 3 },
+  { id: 'planning', title: 'Input planning produksi', dur: 3, desc: 'Lot kecil per produk diinput; MatPrep mengubahnya jadi lot besar dan pcs.' },
+  { id: 'saran',    title: 'Saran pengebonan',        dur: 3.5, desc: 'Kebutuhan dikurangi sisa stok, lalu dibulatkan per karung.' },
+  { id: 'bon',      title: 'Pengebonan',              dur: 3, desc: 'Operator menyesuaikan karung bila perlu, bon disimpan dan dicetak ke gudang.' },
+  { id: 'kirim',    title: 'Kirim warehouse → melting', dur: 6, desc: 'Gudang menyiapkan palet; forklift membawa karung ke area melting.' },
+  { id: 'isi',      title: 'Material diisi ke meja',  dur: 5, desc: 'Karung dibuka dan diisikan ke kompartemen meja inokulasi sesuai materialnya.' },
+  { id: 'pakai',    title: 'Material dipakai dari meja', dur: 4.5, desc: 'Material ditakar dari meja dan masuk ke tungku induksi saat charging.' },
+  { id: 'input',    title: 'Input di aplikasi produksi', dur: 4, desc: 'Operator mencatat kg terpakai per lot di aplikasi produksi.' },
+  { id: 'stok',     title: 'Stok MatPrep berkurang',  dur: 4, desc: 'Data terkirim; stok meja di MatPrep berkurang otomatis.' },
+  { id: 'tutup',    title: 'Tutup shift',             dur: 3, desc: 'Pemakaian aktual dan sisa dicatat; sisa diteruskan ke shift berikutnya.' },
 ];
 export const LOOP_STARTS = BEATS.map((_, i) => BEATS.slice(0, i).reduce((a, b) => a + b.dur, 0));
 export const LOOP = BEATS.reduce((a, b) => a + b.dur, 0);

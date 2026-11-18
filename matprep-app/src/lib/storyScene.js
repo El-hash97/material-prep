@@ -4,11 +4,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { BEATS, beatAt } from './story';
 import { SACKS } from './sack3d';
 import { fmtNum } from './calc';
+import { buildMejaModel, COMP } from './mejaModel';
 
 // Scene 3D alur shift. Semua pose adalah fungsi murni dari waktu loop t (detik),
 // jadi loncat babak, gambar diam (reduced motion), dan pengulangan cukup "render di t".
-// Area (sumbu x, meter): kantor planning −14 · warehouse −8 · lorong forklift · meja material 5 ·
-// stasiun tungku induksi 9,6 (bentuk mengikuti furnace-machine/tungku-induksi.html).
+// Area (sumbu x, meter): kantor planning −14 · warehouse −8 · lorong forklift · meja inokulasi 5 (model yang
+// sama dengan MejaInokulasi3D, skala 0,75) · stasiun tungku induksi 10,6 (bentuk mengikuti tungku-induksi.html).
 
 const C = {
   floor: 0x171c1f, seam: 0x101417, aisle: 0xb8922c, steel: 0x5d676d, steelDark: 0x2e353a, steelLight: 0xb3bbbe,
@@ -31,21 +32,21 @@ const bez = (out, p0, p1, p2, k) => out.set(
 );
 
 const OFFICE = new THREE.Vector3(-14, 0, 0);
-const FORK = { warehouse: -8, melting: 2.3, z: 0.75, wheelF: 0.27, wheelR: 0.22 };
-const MEJA = new THREE.Vector3(5, 0, 0.4);
-const FC = new THREE.Vector3(9.6, 0, 0); // pusat tungku
+const FORK = { warehouse: -8, melting: 0.6, z: 0.75, wheelF: 0.27, wheelR: 0.22 };
+const MEJA = new THREE.Vector3(5, 0, 0);
+const MS = 0.75; // skala meja inokulasi (model asli 4,2 m + material curah di kiri-kanan)
+const FC = new THREE.Vector3(10.6, 0, 0); // pusat tungku
 const DECK_Y = 1.72;
-const TABLET = new THREE.Vector3(7.3, 0, -1.25);
-const MONITOR = new THREE.Vector3(3.2, 0, -1.7);
-const BIN = { w: 0.42, h: 0.5, d: 0.38, cols: 5 };
+const TABLET = new THREE.Vector3(8.1, 0, -0.95);
+const MONITOR = new THREE.Vector3(1.9, 0, -1.75);
 const SACK = { w: 0.44, h: 0.14, d: 0.42 };
 
 // Target kamera per babak; null = ikuti forklift.
 const CAM = [
   { x: -14.1, z: -0.15, zoom: 2.6 }, { x: -14.1, z: -0.15, zoom: 2.6 }, { x: -13.5, z: 0, zoom: 2.05 },
   null,
-  { x: 4.4, z: 0.5, zoom: 1.4 }, { x: 8.7, z: -0.1, zoom: 0.92 }, { x: 7.3, z: -1, zoom: 1.9 },
-  { x: 5, z: -0.8, zoom: 1.1 }, { x: 8.9, z: -1.2, zoom: 1.15 },
+  { x: 5, z: 0, zoom: 1.45 }, { x: 9, z: -0.1, zoom: 0.95 }, { x: 7.9, z: -0.7, zoom: 1.9 },
+  { x: 5, z: -0.9, zoom: 1 }, { x: 10, z: -1.3, zoom: 1.15 },
 ];
 
 export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true } = {}) {
@@ -279,14 +280,15 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
   // karung yang dipindah dari palet ke meja (babak 5)
   const hop = [0, 1, 2].map(() => { const m = mesh(sackGeo, sackMat); scene.add(m); return m; });
 
-  // ---------- meja material + kompartemen ----------
-  const mejaTopMat = own(0x4a5459, { metalness: 0.5, roughness: 0.4 });
-  scene.add(at(box(2.7, 0.08, 1.1, mejaTopMat), MEJA.x, 0.85, MEJA.z));
-  for (const [dx, dz] of [[-1.25, -0.45], [1.25, -0.45], [-1.25, 0.45], [1.25, 0.45]]) scene.add(at(box(0.07, 0.85, 0.07, legMat), MEJA.x + dx, 0.425, MEJA.z + dz));
-  mark('meja', mejaTopMat);
-  const binsGroup = new THREE.Group();
-  scene.add(binsGroup);
-  let bins = [];
+  // ---------- meja inokulasi: model yang sama dengan meja 3D interaktif (lib/mejaModel.js) ----------
+  const mejaRoot = new THREE.Group();
+  mejaRoot.position.copy(MEJA);
+  mejaRoot.scale.setScalar(MS);
+  const meja = buildMejaModel(mejaRoot);
+  scene.add(mejaRoot);
+  const mejaAt = (x, y, z) => new THREE.Vector3(MEJA.x + x * MS, y * MS, MEJA.z + z * MS); // koordinat model → dunia
+  let barOf = new Map();
+  const lastLevel = new Map(); // isi kompartemen hanya dihitung ulang bila levelnya berubah
 
   // ---------- stasiun tungku induksi ----------
   const furnace = new THREE.Group();
@@ -528,21 +530,10 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
   function setData(next) {
     d = next;
     screenKind = tabletKind = null; // gambar ulang layar di setTime berikutnya
-    for (const b of bins) { b.shell.geometry.dispose(); b.fill.geometry.dispose(); b.fill.material.dispose(); }
-    binsGroup.clear();
+    barOf = new Map(next.bars.map(b => [b.material, b]));
+    lastLevel.clear();
     for (const m of monitorBars) { m.geometry.dispose(); m.material.dispose(); monitor.remove(m); }
-    const n = next.bars.length, cols = Math.min(BIN.cols, Math.max(1, n)), rows = Math.ceil(n / cols);
-    const shellMat = mat(0x22292e, { transparent: true, opacity: 0.55, metalness: 0.4 });
-    bins = next.bars.map((bar, i) => {
-      const cx = MEJA.x + ((i % cols) - (cols - 1) / 2) * (BIN.w + 0.06);
-      const cz = MEJA.z + (Math.floor(i / cols) - (rows - 1) / 2) * (BIN.d + 0.08);
-      const shell = at(box(BIN.w, BIN.h, BIN.d, shellMat), cx, 0.89 + BIN.h / 2, cz);
-      const fill = box(BIN.w - 0.05, BIN.h - 0.04, BIN.d - 0.05, own(C.steelLight, { roughness: 0.9 }));
-      fill.geometry.translate(0, (BIN.h - 0.04) / 2, 0);
-      fill.castShadow = fill.receiveShadow = shadows;
-      binsGroup.add(shell, at(fill, cx, 0.91, cz));
-      return { bar, shell, fill };
-    });
+    const n = next.bars.length;
     const gap = n > 1 ? 0.8 / (n - 1) : 0;
     monitorBars = next.bars.map((_, i) => {
       const m = mesh(new THREE.PlaneGeometry(0.06, 0.4), new THREE.MeshBasicMaterial({ color: C.steelLight, toneMapped: false }));
@@ -597,18 +588,20 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
     fkPallet.userData.sacks.count = sacks;
 
     v1.set(FORK.melting + 1.2, 1, FORK.z);
-    v2.set((FORK.melting + MEJA.x) / 2 + 0.3, 2.0, (FORK.z + MEJA.z) / 2);
+    v2.set((FORK.melting + MEJA.x) / 2, 2.6, (FORK.z + MEJA.z) / 2);
     hop.forEach((m, k) => {
       m.visible = i === 4 && l > 0.08 && l < 0.88;
       if (!m.visible) return;
       const p = (l * 3 + k / 3) % 1;
-      bez(m.position, v1, v2, v3.set(MEJA.x - 0.6 + k * 0.6, 1.2, MEJA.z), p);
+      bez(m.position, v1, v2, v3.copy(mejaAt(meja.dims.cx(k * 3 + 1), meja.dims.TOP + 0.15, -0.3)), p);
       m.rotation.set(0, p * 1.2, p * 0.8);
     });
 
-    for (const b of bins) {
-      b.fill.scale.y = Math.max(0.02, level(b.bar, i, l, true));
-      b.fill.material.color.set(b.bar.low && (i > 5 || (i === 5 && l > 0.6)) ? C.danger : C.steelLight);
+    // isi kompartemen meja (model asli): naik saat diisi (babak 5), turun saat dipakai (babak 6)
+    for (const f of meja.fills) {
+      const bar = barOf.get(COMP[f.ci].material);
+      const lv = bar ? Math.round(level(bar, i, l, true) * 200) / 200 : 0;
+      if (lastLevel.get(f) !== lv) { lastLevel.set(f, lv); meja.updateFill(f, { solid: lv, cap: 1, min: 0 }, false); }
     }
     monitorBars.forEach((m, k) => {
       const bar = d.bars[k];
@@ -620,8 +613,8 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
     // tungku: tutup terbuka saat charging (babak 6), material masuk ke mulut, kumparan & cairan menyala
     const lidOpen = i === 5 ? smooth(seg(l, 0, 0.15)) * (1 - smooth(seg(l, 0.88, 1))) : 0;
     lid.rotation.z = lidOpen * 1.15;
-    v1.set(MEJA.x + 1.0, 1.25, MEJA.z);
-    v2.set((MEJA.x + FC.x) / 2 + 0.6, 3.0, (MEJA.z + FC.z) / 2);
+    v1.copy(mejaAt(meja.dims.cx(8), 1.0, 0.3)); // dari hopper paling kanan
+    v2.set((v1.x + FC.x) / 2, 3.0, (v1.z + FC.z) / 2);
     flow.forEach((m, k) => {
       m.visible = i === 5 && l > 0.15 && l < 0.85;
       if (m.visible) { bez(m.position, v1, v2, MOUTH, (l * 2.4 + k / flow.length) % 1); m.rotation.set(k, l * 9, k * 2); }
@@ -647,7 +640,7 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
     shiftLamp.color.copy(SHIFT_COL[d.shiftFrom] ?? SHIFT_COL.Red).lerp(SHIFT_COL[d.shiftTo] ?? SHIFT_COL.White, i === 8 ? smooth(seg(l, 0.3, 0.7)) : 0);
     shiftLamp.emissive.copy(shiftLamp.color);
 
-    const ACTIVE = ['desk', 'desk', 'desk', null, 'meja', 'furnace', 'tablet', 'monitor', null];
+    const ACTIVE = ['desk', 'desk', 'desk', null, null, 'furnace', 'tablet', 'monitor', null];
     for (const [name, ms] of Object.entries(active)) {
       const on = ACTIVE[i] === name;
       for (const m of ms) { m.emissive.copy(on ? AMBER : m.userData.base); m.emissiveIntensity = on ? 0.16 : m.userData.baseI; }
@@ -683,7 +676,7 @@ export function createStoryScene(container, data, { maxDpr = 1.5, shadows = true
     dispose() {
       scene.traverse(o => {
         o.geometry?.dispose();
-        (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m?.dispose());
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m?.map?.dispose(); m?.dispose(); });
       });
       for (const t of textures) t.dispose();
       pmrem.dispose();

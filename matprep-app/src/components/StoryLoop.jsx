@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Play, Pause, ChevronLeft, ChevronRight,
+  Play, Pause, ChevronLeft, ChevronRight, Check,
   ClipboardList, Lightbulb, Stamp, Forklift, PackageOpen, Flame, TabletSmartphone, MonitorDown, Moon,
 } from 'lucide-react';
 import { BEATS, LOOP, LOOP_STARTS, beatAt } from '../lib/story';
@@ -22,6 +22,7 @@ export default function StoryLoop({ story }) {
   const rootRef = useRef(null);
   const holderRef = useRef(null);
   const progressRef = useRef(null);
+  const railRef = useRef(null); // garis langkah aktif di deskripsi alur
   const api = useRef(null);
   const tRef = useRef(REDUCED ? restTime(0) : 0);
   const beatRef = useRef(0);
@@ -43,7 +44,9 @@ export default function StoryLoop({ story }) {
   const paint = () => {
     const t = tRef.current;
     if (api.current) { api.current.setTime(t); api.current.render(); }
-    if (progressRef.current) progressRef.current.style.transform = `scaleX(${REDUCED ? 1 : beatAt(t).local})`;
+    const local = REDUCED ? 1 : beatAt(t).local;
+    if (progressRef.current) progressRef.current.style.transform = `scaleX(${local})`;
+    if (railRef.current) railRef.current.style.transform = `scaleY(${local})`;
   };
   const tick = () => {
     paint();
@@ -197,6 +200,38 @@ export default function StoryLoop({ story }) {
             <ChevronRight size={15} />
           </button>
         )}
+      </div>
+
+      {/* Jendela bergulir: langkah sebelumnya, langkah aktif (terbuka), dua berikutnya; meluncur saat babak berganti.
+          Baris tertutup = 30px (judul 22 + jarak 8), jadi geseran = (babak − 1) × 30. */}
+      <div
+        className="flow-window relative mt-2 h-[108px] overflow-hidden border-t border-white/[0.06] pt-3"
+        style={{ maskImage: 'linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 30px), transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 30px), transparent)' }}
+      >
+      <ol className="m-0 list-none p-0" aria-label="Deskripsi alur shift" style={{ transform: `translateY(-${Math.max(0, beat - 1) * 30}px)` }}>
+        {BEATS.map((x, i) => {
+          const state = i < beat ? 'done' : i === beat ? 'now' : 'next';
+          return (
+            <li key={x.id} className="flow-step relative pb-2 pl-8" data-state={state}>
+              {i < BEATS.length - 1 && (
+                <span className="flow-rail" aria-hidden="true">
+                  <span ref={i === beat ? railRef : undefined} style={i === beat ? undefined : { transform: `scaleY(${i < beat ? 1 : 0})` }} />
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => goTo(i)}
+                aria-current={i === beat ? 'step' : undefined}
+                className="block w-full rounded-[3px] text-left"
+              >
+                <span className="flow-dot" aria-hidden="true">{i < beat ? <Check size={11} strokeWidth={3} /> : i + 1}</span>
+                <span className={`block text-[12px] font-semibold leading-[22px] ${state === 'next' ? 'text-steel-dim' : 'text-paper'}`}>{x.title}</span>
+                <span className="flow-desc"><span className="text-[11px] leading-snug text-steel">{x.desc}</span></span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
       </div>
     </div>
   );
