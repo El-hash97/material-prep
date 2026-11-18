@@ -91,6 +91,7 @@ Teks status di atas tint 10% warnanya sendiri tetap ≥ 5.0:1. Status selalu dis
 - Form: `form-control` di `iron-900` dengan border `iron-500` (3:1) dan fokus amber; `form-label` uppercase.
 - Tabel: `data-table` + `table-header` + `table-row` + `table-foot`; angka rata kanan.
 - `alert-*` untuk pesan; `meter` untuk gentani; `well` untuk blok dalam tile.
+- Pemuatan (`components/LoadState.jsx`): tidak ada layar kosong atau spinner. `index.html` sudah gelap sejak paint pertama; saat `db.init()` App tampil dengan sidebar asli + `DashboardSkeleton` (kelas `tile`/bento sama, tiap blok dibungkus setinggi line-height aslinya agar tidak ada lompatan layout); gagal → `BootError` dengan tombol Coba lagi. Bagian yang dimuat terpisah (animasi alur shift, meja 3D) memakai `Skel` seukuran hasil akhirnya. `.skel`: satu sapuan shimmer serempak (gradien fixed ke viewport), muncul setelah 120ms agar pemuatan cepat tidak berkedip; diam saat reduced motion.
 - Visualisasi: satu sumbu y linear; tanpa skala log, sumbu ganda, atau donut. Data biasa abu baja, sorotan `paper`; merah/amber/hijau hanya untuk status (selalu dengan ikon + teks). Bar status (stok, gentani) memakai HTML/CSS; Chart.js hanya untuk tren harian. Grid `rgba(255,255,255,0.055)`.
 
 ## Gerak

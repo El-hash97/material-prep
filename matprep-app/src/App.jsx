@@ -2,6 +2,7 @@ import { Menu } from 'lucide-react';
 import useStore from './store/useStore';
 import Sidebar from './components/Sidebar';
 import Modal from './components/Modal';
+import { DashboardSkeleton, BootError } from './components/LoadState';
 import Dashboard from './pages/Dashboard';
 import Planning from './pages/Planning';
 import TutupShift from './pages/TutupShift';
@@ -16,7 +17,8 @@ const PAGES = {
   settings: Settings,
 };
 
-export default function App() {
+// boot: 'loading' (skeleton) | 'error' (kartu error) | 'ready' (halaman). Diatur main.jsx selama db.init().
+export default function App({ boot = 'ready', onRetry }) {
   const { page, sidebarCollapsed, sidebarMobileOpen, setSidebarMobileOpen, currentBonId } = useStore();
   const PageComponent = PAGES[page] ?? Dashboard;
 
@@ -55,7 +57,9 @@ export default function App() {
         id="main-content"
         className={`sb-shift min-h-screen pt-14 ${mainMargin} md:pt-0`}
       >
-        <PageComponent key={page === 'tutup-shift' ? currentBonId ?? 'none' : page} />
+        {boot === 'loading' ? <DashboardSkeleton />
+          : boot === 'error' ? <BootError onRetry={onRetry} />
+          : <PageComponent key={page === 'tutup-shift' ? currentBonId ?? 'none' : page} />}
       </main>
 
       <Modal />

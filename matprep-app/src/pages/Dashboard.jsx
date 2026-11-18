@@ -15,6 +15,7 @@ import { formatDate, fmtNum, todayStr } from '../lib/calc';
 import { buildDashboard } from '../lib/dashboard';
 import { buildStory } from '../lib/story';
 import StoryLoop from '../components/StoryLoop';
+import { Skel } from '../components/LoadState';
 import MaterialIcon from '../components/MaterialIcon';
 
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
@@ -474,7 +475,7 @@ export default function Dashboard() {
               meta={activeShift ? `3D interaktif · shift ${activeShift.shift} · sisa + bon per kompartemen` : '3D interaktif · sisa akhir shift terakhir per kompartemen'}
             />
             <div className="tile-body">
-              <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+              <Suspense fallback={<div role="status" aria-busy="true"><span className="sr-only">Memuat meja inokulasi 3D…</span><Skel className="h-[420px] w-full md:h-[500px]" /></div>}>
                 <MejaInokulasi3D lines={stockLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={activeShift ? 'saved' : 'pre'} />
               </Suspense>
             </div>

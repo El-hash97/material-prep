@@ -280,3 +280,22 @@
 @media (prefers-reduced-motion: reduce) {
   .sb, .sb-shift, .sb-drawer, .sb-overlay, .sb-chevron, .sb-fade, .sb-tip { transition: none !important; }
 }
+
+/* Skeleton pemuatan: satu sapuan cahaya serempak melintasi semua blok (gradien fixed ke viewport).
+   Muncul setelah 120ms agar pemuatan cepat tidak berkedip. Reduced motion: blok diam. */
+.skel {
+  border-radius: 4px;
+  background-color: #1B2125;
+  background-image: linear-gradient(100deg, transparent 40%, rgba(255, 255, 255, 0.06) 50%, transparent 60%);
+  background-size: 200vw 100%;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  animation: matprep-shimmer 1.6s linear infinite;
+}
+.skel-reveal { animation: matprep-skel-in 220ms ease-out 120ms both; }
+@keyframes matprep-shimmer { from { background-position: 100vw 0; } to { background-position: -100vw 0; } }
+@keyframes matprep-skel-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; background-image: none; }
+  .skel-reveal { animation: none; }
+}

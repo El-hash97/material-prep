@@ -5,10 +5,13 @@ import App from './App.jsx'
 import { db } from './store/db'
 
 const root = createRoot(document.getElementById('root'))
+const render = (boot) => root.render(<StrictMode><App boot={boot} onRetry={start} /></StrictMode>)
 
-db.init()
-  .then(() => root.render(<StrictMode><App /></StrictMode>))
-  .catch(e => {
-    console.error(e)
-    document.getElementById('root').textContent = 'Gagal memuat data dari database. Muat ulang halaman.'
-  })
+// Shell + skeleton dashboard langsung tampil; data dari API mengisi setelahnya. Gagal → kartu error + Coba lagi.
+function start() {
+  render('loading')
+  db.init()
+    .then(() => render('ready'))
+    .catch(e => { console.error(e); render('error') })
+}
+start()

@@ -4,6 +4,7 @@ import {
   ClipboardList, Lightbulb, Stamp, Forklift, PackageOpen, Flame, TabletSmartphone, MonitorDown, Moon,
 } from 'lucide-react';
 import { BEATS, LOOP, LOOP_STARTS, beatAt } from '../lib/story';
+import { Skel } from './LoadState';
 
 const REDUCED = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
@@ -33,6 +34,7 @@ export default function StoryLoop({ story }) {
   const [beat, setBeat] = useState(0);
   const [playing, setPlaying] = useState(!REDUCED);
   const [fallback, setFallback] = useState(false);
+  const [ready, setReady] = useState(false); // scene 3D sudah tergambar
 
   // Berhenti / reduced motion: tampilkan data terbaru. Berputar: data yang dikunci di awal putaran.
   const s = playing ? looped : story;
@@ -68,6 +70,7 @@ export default function StoryLoop({ story }) {
         api.current = createStoryScene(holderRef.current, shownRef.current.scene, { maxDpr: MOBILE ? 1 : 1.5, shadows: !MOBILE });
         ro = new ResizeObserver(([e]) => { api.current?.resize(e.contentRect.width, e.contentRect.height); paint(); });
         ro.observe(holderRef.current);
+        setReady(true);
       })
       .catch(err => {
         console.warn('Animasi 3D tidak tersedia, memakai storyboard.', err);
@@ -126,6 +129,7 @@ export default function StoryLoop({ story }) {
         aria-label={`Animasi alur shift, babak ${beat + 1} dari ${BEATS.length}: ${b.title}`}
       >
         <div ref={holderRef} className="absolute inset-0" />
+        {!ready && !fallback && <Skel className="absolute inset-0 !rounded-none" />}
         {fallback && (
           <div className="absolute inset-0 grid place-items-center">
             <Icon size={56} strokeWidth={1.4} className="text-steel-dim" aria-hidden="true" />

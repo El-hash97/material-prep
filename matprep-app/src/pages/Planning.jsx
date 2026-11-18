@@ -7,6 +7,7 @@ import { printBon } from '../lib/print';
 import MaterialIcon from '../components/MaterialIcon';
 import { lazy, Suspense, useState } from 'react';
 import PemakaianTengah from '../components/PemakaianTengah';
+import { Skel } from '../components/LoadState';
 const MejaInokulasi3D = lazy(() => import('../components/MejaInokulasi3D'));
 
 // Input kg bon final: draf lokal agar operator bisa mengosongkan lalu mengetik ulang tanpa lompat ke 0.
@@ -289,7 +290,7 @@ export default function Planning() {
             <span className="chip text-steel-dim">Batas minimum</span>
           </div>
           <div className="tile-body">
-            <Suspense fallback={<div className="h-[420px] animate-pulse rounded-[4px] bg-iron-900/70 md:h-[500px]" />}>
+            <Suspense fallback={<div role="status" aria-busy="true"><span className="sr-only">Memuat meja inokulasi 3D…</span><Skel className="h-[420px] w-full md:h-[500px]" /></div>}>
               <MejaInokulasi3D lines={tubeLines} stokMinimum={settings.stokMinimum} kapasitas={settings.kapasitasTabung} mode={tubeMode} />
             </Suspense>
           </div>
