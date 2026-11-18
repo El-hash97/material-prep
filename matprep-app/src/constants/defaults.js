@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS = {
   pcsPerLotKecil: { '2TR': 15, '1TR': 15, 'KAI': 120, 'CRANK': 45 },
   ambangWaspada: 90,
   ukuranKarung: {
-    'LMC': 1000, 'Inocarb': 25, 'Antimon (Sb)': 25, 'Fe Sulfur': 25,
+    'LMC': 25, 'Inocarb': 25, 'Antimon (Sb)': 25, 'Fe Sulfur': 25,
     'Mg Denodule': 25, 'Superseed': 20, 'Sn': 50, 'Cu': 20,
     'Mg Lamet': 25, 'Ultraseed CE Inoculant': 20,
   },
