@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import {
   Chart, BarElement, CategoryScale, LinearScale, Tooltip,
   LineController, LineElement, PointElement,
@@ -23,6 +23,29 @@ Chart.defaults.font.family = 'Plus Jakarta Sans, sans-serif';
 const C = { paper: '#ECE9E2', steel: '#A7B0B3', dim: '#7C8588', faint: '#5A6366', grid: 'rgba(255,255,255,0.055)' };
 const fmt1 = n => n.toLocaleString('id-ID', { maximumFractionDigits: 1 });
 const pctOf = (v, max) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
+const REDUCED = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const stagger = i => ({ '--i': i });
+
+// Angka naik dari nilai sebelumnya ke target (ease-out cubic). Reduced motion: langsung ke target.
+function useCountUp(target, ms = 700) {
+  const [shown, setShown] = useState(REDUCED ? target : 0);
+  const from = useRef(REDUCED ? target : 0);
+  useEffect(() => {
+    const a = from.current;
+    const start = performance.now();
+    let raf;
+    const tick = now => {
+      const t = REDUCED ? 1 : Math.min(1, (now - start) / ms);
+      const v = a + (target - a) * (1 - (1 - t) ** 3);
+      from.current = v;
+      setShown(v);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return shown;
+}
 
 const STATUS = {
   crit:  { Icon: TriangleAlert, label: 'Kritis', icon: 'text-danger', fill: 'bg-danger' },
@@ -72,7 +95,7 @@ function Spark({ values }) {
   const [lx, ly] = pts.at(-1);
   return (
     <svg viewBox="0 0 120 26" className="h-[26px] w-full" preserveAspectRatio="none" aria-hidden="true">
-      <polyline fill="none" stroke={C.steel} strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={pts.map(p => p.join(',')).join(' ')} />
+      <polyline className="anim-draw" pathLength="1" fill="none" stroke={C.steel} strokeWidth="1.5" vectorEffect="non-scaling-stroke" points={pts.map(p => p.join(',')).join(' ')} />
       <circle cx={lx} cy={ly} r="2.5" fill={C.paper} />
     </svg>
   );
@@ -82,19 +105,27 @@ function Mix({ parts }) {
   const total = parts.reduce((a, p) => a + p.value, 0);
   return (
     <div className="my-2.5 flex h-1.5 gap-0.5 overflow-hidden rounded-[2px] bg-white/[0.06]">
-      {total > 0 && parts.filter(p => p.value > 0).map(p => (
-        <i key={p.key} className="rounded-[2px]" style={{ flex: p.value, backgroundColor: p.color }} title={`${p.key}: ${p.value}`} />
+      {total > 0 && parts.filter(p => p.value > 0).map((p, i) => (
+        <i key={p.key} className="anim-grow rounded-[2px]" style={{ ...stagger(i + 2), flex: p.value, backgroundColor: p.color }} title={`${p.key}: ${p.value}`} />
       ))}
     </div>
   );
 }
 
+// value: angka (dihitung naik) atau null (tampil "—"). Pembaca layar mendapat nilai akhir saja.
 function Kpi({ label, value, unit, children, foot }) {
+  const n = useCountUp(value ?? 0);
   return (
     <div className="flex min-w-0 flex-col bg-iron-850 px-4 py-3.5">
       <div className="tile-label">{label}</div>
-      <div className="readout mt-2 text-[28px]">
-        {value}{unit && <span className="ml-1 text-xs font-medium text-steel-faint">{unit}</span>}
+      <div className="readout mt-2 flex flex-wrap items-baseline text-[24px] sm:text-[28px]">
+        {value === null ? '—' : (
+          <>
+            <span aria-hidden="true">{fmtNum(Math.round(n))}</span>
+            <span className="sr-only">{fmtNum(value)}</span>
+          </>
+        )}
+        {unit && <span className="ml-1 text-xs font-medium text-steel-faint">{unit}</span>}
       </div>
       {children}
       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-steel-dim">{foot}</div>
@@ -102,7 +133,7 @@ function Kpi({ label, value, unit, children, foot }) {
   );
 }
 
-function StockRow({ r }) {
+function StockRow({ r, i }) {
   const st = STATUS[r.status];
   return (
     <div className="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 border-t border-white/[0.05] py-2.5 first:border-t-0 sm:grid-cols-[28px_minmax(110px,1.1fr)_minmax(120px,2fr)_76px_92px]">
@@ -120,7 +151,7 @@ function StockRow({ r }) {
         title={`${fmtNum(r.stok)} kg dari kapasitas ${fmtNum(r.cap)} kg${r.min > 0 ? `, minimum ${fmtNum(r.min)} kg` : ''}`}
       >
         <span className="absolute inset-x-0 top-[7px] h-1 rounded-[2px] bg-iron-700" />
-        <span className={`absolute left-0 top-[5px] h-2 rounded-r-[4px] transition-[width] duration-700 ease-out ${st.fill}`} style={{ width: pctOf(r.stok, r.cap) }} />
+        <span className={`anim-grow absolute left-0 top-[5px] h-2 rounded-r-[4px] transition-[width] duration-700 ease-out ${st.fill}`} style={{ ...stagger(i), width: pctOf(r.stok, r.cap) }} />
         {r.min > 0 && <span className="absolute inset-y-px w-0.5 rounded-[1px] bg-paper" style={{ left: pctOf(r.min, r.cap) }} />}
       </div>
       <div className="readout hidden text-right text-[13px] sm:block">{fmtNum(r.stok)}<span className="ml-0.5 text-[10px] font-medium text-steel-faint">kg</span></div>
@@ -134,7 +165,7 @@ function StockRow({ r }) {
   );
 }
 
-function GentaniRow({ r, ambang }) {
+function GentaniRow({ r, ambang, i }) {
   const MAX = 120;
   const fill = r.status === 'over' ? 'bg-danger' : r.status === 'warn' ? 'bg-signal' : 'bg-steel';
   return (
@@ -145,7 +176,7 @@ function GentaniRow({ r, ambang }) {
       <span className="truncate font-semibold text-paper">{r.material}</span>
       <div className="relative h-3.5">
         <span className="absolute inset-x-0 top-[5px] h-1 rounded-[2px] bg-iron-700" />
-        <span className={`absolute left-0 top-1 h-1.5 rounded-r-[4px] transition-[width] duration-700 ease-out ${fill}`} style={{ width: pctOf(r.pct, MAX) }} />
+        <span className={`anim-grow absolute left-0 top-1 h-1.5 rounded-r-[4px] transition-[width] duration-700 ease-out ${fill}`} style={{ ...stagger(i), width: pctOf(r.pct, MAX) }} />
         <span className="absolute inset-y-0 w-px bg-steel-dim" style={{ left: pctOf(ambang, MAX) }} />
         <span className="absolute inset-y-0 w-0.5 bg-paper" style={{ left: pctOf(100, MAX) }} />
       </div>
@@ -155,6 +186,8 @@ function GentaniRow({ r, ambang }) {
 }
 
 function Trend({ daily }) {
+  // Stagger kolom hanya saat pertama tampil; ganti rentang waktu memakai transisi biasa Chart.js.
+  const entered = useRef(false);
   const worked = daily.filter(d => d.total > 0);
   const avg = worked.length ? worked.reduce((a, d) => a + d.total, 0) / worked.length : 0;
   const last = daily.length - 1;
@@ -184,7 +217,12 @@ function Trend({ daily }) {
   };
   const options = {
     responsive: true, maintainAspectRatio: false,
-    animation: { duration: 500, easing: 'easeOutQuart' },
+    animation: REDUCED ? false : {
+      duration: 700,
+      easing: 'easeOutQuart',
+      onComplete: () => { entered.current = true; },
+      delay: ctx => (ctx.type === 'data' && ctx.mode === 'default' && !entered.current ? ctx.dataIndex * 35 : 0),
+    },
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
@@ -218,7 +256,7 @@ function Trend({ daily }) {
       <div className="mb-3 text-[11px] text-steel-faint">
         {avg > 0 ? <>Garis putus = rata-rata <span className="font-semibold text-steel">{fmtNum(Math.round(avg))} kg</span> per hari kerja</> : 'Belum ada pemakaian aktual'}
       </div>
-      <div className="relative h-[190px]">
+      <div className="relative h-[180px] sm:h-[210px]">
         <Bar data={data} options={options} aria-label="Pemakaian harian" role="img" />
       </div>
     </>
@@ -304,18 +342,18 @@ export default function Dashboard() {
         ))}
 
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[5px] border border-white/[0.08] bg-white/[0.08] lg:grid-cols-4">
-          <Kpi label="Pemakaian" value={fmtNum(kpis.usage.value)} unit="kg" foot={<Delta value={kpis.usage.delta} label={periodLabel} />}>
+          <Kpi label="Pemakaian" value={kpis.usage.value} unit="kg" foot={<Delta value={kpis.usage.delta} label={periodLabel} />}>
             <Spark values={d.daily.map(x => x.total)} />
           </Kpi>
           <Kpi label="Bon" value={kpis.bon.value} foot={`${kpis.bon.closed} closed · ${kpis.bon.open} open`}>
             <Mix parts={[{ key: 'Closed', value: kpis.bon.closed, color: C.dim }, { key: 'Open', value: kpis.bon.open, color: C.paper }]} />
           </Kpi>
-          <Kpi label="Lot besar" value={fmtNum(lotTotal)} foot={<Delta value={kpis.lot.delta} label={periodLabel} />}>
+          <Kpi label="Lot besar" value={lotTotal} foot={<Delta value={kpis.lot.delta} label={periodLabel} />}>
             <Mix parts={d.productMix.map(x => ({ key: x.p, value: x.value, color: PRODUCT_TONES[x.p].color }))} />
           </Kpi>
           <Kpi
             label="Gentani dalam batas"
-            value={kpis.gentani.active ? kpis.gentani.ok : '—'}
+            value={kpis.gentani.active ? kpis.gentani.ok : null}
             unit={kpis.gentani.active ? `/ ${kpis.gentani.active} material` : null}
             foot={kpis.gentani.active ? `${kpis.gentani.warn} waspada · ${kpis.gentani.over} over` : 'tutup shift dengan pemakaian aktual'}
           >
@@ -345,7 +383,7 @@ export default function Dashboard() {
                   <div className="hidden grid-cols-[28px_minmax(110px,1.1fr)_minmax(120px,2fr)_76px_92px] gap-x-3 pb-2 font-display text-[9px] font-semibold uppercase tracking-[0.16em] text-steel-faint sm:grid">
                     <span /><span>Material</span><span>Stok vs kapasitas · ┃ minimum</span><span className="text-right">Stok</span><span className="text-right">Cukup untuk</span>
                   </div>
-                  {stockShown.map(r => <StockRow key={r.material} r={r} />)}
+                  {stockShown.map((r, i) => <StockRow key={r.material} r={r} i={i} />)}
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
                     {d.stock.length > 6 ? (
                       <button className="btn btn-ghost btn-xs" onClick={() => setShowAllStock(v => !v)}>
@@ -390,7 +428,7 @@ export default function Dashboard() {
                 <Empty>Belum ada data gentani pada rentang ini. Gentani dihitung saat shift ditutup dengan pemakaian aktual.</Empty>
               ) : (
                 <div className="flex flex-col gap-2.5">
-                  {d.gentani.map(r => <GentaniRow key={r.material} r={r} ambang={ambang} />)}
+                  {d.gentani.map((r, i) => <GentaniRow key={r.material} r={r} ambang={ambang} i={i} />)}
                   <div className="grid grid-cols-[minmax(84px,120px)_minmax(0,1fr)_48px] gap-2.5 text-[10px] text-steel-faint">
                     <span />
                     <div className="relative h-3">
@@ -423,8 +461,8 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div className="flex h-2.5 gap-0.5">
-                    {d.productMix.filter(x => x.value > 0).map(x => (
-                      <i key={x.p} className="rounded-[2px]" style={{ flex: x.value, backgroundColor: PRODUCT_TONES[x.p].color }} title={`${x.p}: ${x.value} lot`} />
+                    {d.productMix.filter(x => x.value > 0).map((x, i) => (
+                      <i key={x.p} className="anim-grow rounded-[2px]" style={{ ...stagger(i), flex: x.value, backgroundColor: PRODUCT_TONES[x.p].color }} title={`${x.p}: ${x.value} lot`} />
                     ))}
                   </div>
                   <div className="mt-4 grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-2">
