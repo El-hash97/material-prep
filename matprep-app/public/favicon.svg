@@ -1,4 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="MatPrep">
-  <title>MatPrep</title>
-  <g><path fill="#F0A32A" d="M56 16 H200 A40 40 0 0 1 240 56 V200 A40 40 0 0 1 200 240 H56 A40 40 0 0 1 16 200 V56 A40 40 0 0 1 56 16 Z"/><path fill="#090B0C" fill-rule="evenodd" d="M36 64 H66 L91 107.3 L116 64 H146 V184 H116 V116 L91 159.3 L66 116 V184 H36 Z M146 64 H170 A50 50 0 0 1 170 164 H146 Z M146 92 V136 H192 V92 Z"/></g>
-</svg>
